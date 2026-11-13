@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MTS – Inter-Terminal Transport (ITT) Operations Management System (Demo)
 
-## Getting Started
+Interactive, frontend-only demo by **Techneura Labs** for **Marine Transport Services (Pvt) Ltd (MTS)**.
+No backend and no real integrations: all data is deterministic mock data persisted in `localStorage`.
+All financial calculations and approvals are **demo simulations**; unconfirmed contract rules are configurable demo assumptions
+(Settings → Business rules). OCR is a **simulated assisted-extraction** demo that always needs human verification.
 
-First, run the development server:
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm run lint && npx tsc --noEmit && npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use the header **role switcher** to view the app as Administrator, Operations Manager, Operations Staff, Supervisor,
+Finance Manager or Driver (frontend permissions only). *Reset demo data* is in the user menu / Settings.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Try the lifecycle
+1. **Terminal Imports → New**: upload `public/documents/sample-cwit.xlsx` or `sample-sagt.xlsx` (real SheetJS parsing, column mapping, validation, duplicate detection). Re-upload the same file → rejected as a duplicate file.
+2. **Movements / Exceptions**: imported rows become movements; missing/conflicting data raises exceptions that block billing until resolved (manager approval for material corrections).
+3. **Chits & Evidence**: attach chits, run simulated extraction, verify.
+4. **Driver Payments** (`/payments?action=generate`) and **Invoicing** (`/invoicing/new`): drafts computed from eligible movements, effective-dated rates, diesel adjustment; approve (simulated).
+5. **Fleet & Fuel**: GPS vs fuel-station reconciliation (originals never overwritten); import `sample-trackmycar.csv`.
+6. **Reports**: 12 reports with charts and CSV/Excel export. **Settings → Audit logs** records every action.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture (see `docs/`)
+- `src/types` entity types · `src/data` deterministic seed · `src/contexts/app-context.tsx` single localStorage-backed store (`update(draft => …)`).
+- `src/lib` pure business logic: operational day (07:00→07:00, one timezone), eligibility/billable status, reconciliation, pay and invoice calculators, import processor, reports.
+- Billable status is **derived** from movement + exception state, so it cannot drift. A trailer with two 20 FT containers is one journey; billing/pay units follow the configurable per-trailer / per-container mode.
+- Demo clock: "today" is fixed at 13 Nov 2026 so seeded data stays consistent; timestamps advance one minute per change.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+- `xlsx` (SheetJS 0.18.5 from npm) is used for demo file parsing only.
+- Pages set `export const instant = false` because the demo is client-rendered from localStorage (Cache Components is kept enabled).
