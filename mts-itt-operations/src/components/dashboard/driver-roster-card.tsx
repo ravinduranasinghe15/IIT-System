@@ -7,12 +7,12 @@ import { SectionCard } from "@/components/shared/section-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useApp } from "@/contexts/app-context";
-import { addDays, demoToday, formatDay } from "@/lib/date-utils";
+import { addDays, realToday, formatDay } from "@/lib/date-utils";
 
 /** Driver dashboard: own upcoming roster only. */
 export function DriverRosterCard({ driverId }: { driverId: string }) {
   const { db } = useApp();
-  const today = demoToday();
+  const today = realToday();
   const to = addDays(today, 6);
   const rows = db.roster.filter((r) => r.driverId === driverId && r.date >= today && r.date <= to).sort((a, b) => (a.date < b.date ? -1 : 1));
   return (

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useApp } from "@/contexts/app-context";
 import { useDriverActions } from "@/hooks/use-drivers";
-import { demoToday, formatDay } from "@/lib/date-utils";
+import { realToday, formatDay } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types/driver";
 
@@ -23,7 +23,7 @@ const OPTIONS: { value: AttendanceStatus; className: string }[] = [
 export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: boolean; onOpenChange: (o: boolean) => void; initialDate?: string }) {
   const { db } = useApp();
   const actions = useDriverActions();
-  const [date, setDate] = useState(initialDate ?? demoToday());
+  const [date, setDate] = useState(initialDate ?? realToday());
 
   const rows = useMemo(
     () =>
@@ -32,7 +32,7 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
         .sort((a, b) => a.shift.localeCompare(b.shift) || a.driverId.localeCompare(b.driverId)),
     [db.roster, date],
   );
-  const future = date > demoToday();
+  const future = date > realToday();
 
   return (
     <FormDialog

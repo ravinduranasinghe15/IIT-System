@@ -38,8 +38,9 @@ export const MOCK_USERS: AppUser[] = [
   { id: "U-009", name: "Kasun Fernando", email: "kasun.f@mts-demo.lk", role: "Driver", status: "Disabled", driverId: "DR-002", lastLogin: "2026-10-30T18:15" },
 ];
 
-export const ROSTER_START = "2026-11-09";
-export const ROSTER_END = "2026-11-22";
+/** The seeded roster covers 7 days back to 30 days ahead of the real current date. */
+export const ROSTER_DAYS_BACK = 7;
+export const ROSTER_DAYS_AHEAD = 30;
 
 export const MOCK_LEAVES: LeaveRecord[] = [
   { id: "LV-0001", driverId: "DR-012", from: "2026-11-09", to: "2026-11-15", type: "Annual", reason: "Family event", status: "Approved", requestedAt: "2026-11-02T10:00", decidedBy: "Dinesh Kumarasinghe" },
@@ -52,9 +53,9 @@ export const MOCK_LEAVES: LeaveRecord[] = [
 export function buildRoster(today: string): RosterEntry[] {
   const out: RosterEntry[] = [];
   let n = 0;
-  eachDay(ROSTER_START, ROSTER_END).forEach((date, dayIdx) => {
+  eachDay(addDays(today, -ROSTER_DAYS_BACK), addDays(today, ROSTER_DAYS_AHEAD)).forEach((date, dayIdx) => {
     MOCK_DRIVERS.forEach((d, i) => {
-      const onLeave = MOCK_LEAVES.some((l) => l.driverId === d.id && l.status === "Approved" && date >= l.from && date <= l.to);
+      const onLeave = false; // leave records start empty; approved leave is applied to the roster when it is approved
       const off = (dayIdx + i) % 7 === 6;
       let shift: RosterShift;
       if (onLeave) shift = "Leave";

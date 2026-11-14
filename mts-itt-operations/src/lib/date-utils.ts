@@ -11,6 +11,11 @@ export const OP_DAY_START_HOUR = 7;
 /** Fixed demo clock so that seeded data and "today" always agree. */
 export const DEMO_NOW = "2026-11-13T17:30";
 
+/** The real current calendar date (yyyy-MM-dd, device local time). Only for the roster, which follows the actual date every day. */
+export function realToday(): string {
+  return format(new Date(), "yyyy-MM-dd");
+}
+
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 

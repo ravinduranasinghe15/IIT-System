@@ -11,7 +11,7 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useDriverActions } from "@/hooks/use-drivers";
 import { rosterConflicts } from "@/lib/mutations/driver";
-import { demoToday, eachDay, addDays, formatDay, formatDate } from "@/lib/date-utils";
+import { realToday, eachDay, addDays, formatDay, formatDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus, Driver, RosterEntry, RosterShift } from "@/types/driver";
 
@@ -41,7 +41,7 @@ export function RosterCalendar({
   showCoverage?: boolean;
   onCellClick?: (driver: Driver, date: string, entry: RosterEntry | undefined) => void;
 }) {
-  const today = demoToday();
+  const today = realToday();
   const dates = useMemo(() => eachDay(start, addDays(start, days - 1)), [start, days]);
   const cell = useMemo(() => new Map(roster.map((r) => [`${r.driverId}|${r.date}`, r])), [roster]);
   const conflicts = useMemo(() => rosterConflicts(roster), [roster]);

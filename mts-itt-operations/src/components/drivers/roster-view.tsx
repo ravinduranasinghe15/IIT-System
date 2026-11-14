@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
-import { addDays, demoToday, eachDay, formatDay } from "@/lib/date-utils";
-import { ROSTER_START } from "@/data/mock-drivers";
+import { addDays, realToday, eachDay, formatDay } from "@/lib/date-utils";
 import type { Driver, RosterEntry } from "@/types/driver";
 import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calendar";
 import { AttendanceDialog } from "./attendance-dialog";
@@ -21,9 +20,9 @@ import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 export function RosterView() {
   const { db } = useApp();
   const { can, isDriver, driverId } = useAuth();
-  const today = demoToday();
-  const [start, setStart] = useState(ROSTER_START);
-  const [end, setEnd] = useState(addDays(ROSTER_START, 13));
+  const today = realToday();
+  const [start, setStart] = useState(today);
+  const [end, setEnd] = useState(addDays(today, 13));
   const [q, setQ] = useState("");
   const [shiftFilter, setShiftFilter] = useState("");
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
@@ -44,7 +43,7 @@ export function RosterView() {
     setEnd(t);
   };
   const shift = (dir: 1 | -1) => setRange(addDays(start, dir * span), addDays(end, dir * span));
-  const isDefaultRange = start === ROSTER_START && end === addDays(ROSTER_START, 13);
+  const isDefaultRange = start === today && end === addDays(today, 13);
 
   const drivers = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -131,8 +130,8 @@ export function RosterView() {
             <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => shift(-1)}>
               <ChevronLeft />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(ROSTER_START, addDays(ROSTER_START, 13))} disabled={isDefaultRange}>
-              Current
+            <Button variant="outline" size="sm" onClick={() => setRange(today, addDays(today, 13))} disabled={isDefaultRange}>
+              Today
             </Button>
             <Button variant="outline" size="icon-sm" aria-label="Next period" onClick={() => shift(1)}>
               <ChevronRight />

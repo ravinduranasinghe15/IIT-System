@@ -5,9 +5,9 @@ import { MOCK_PRIME_MOVERS, MOCK_TRAILERS } from "./mock-vehicles";
 import { MOCK_DRIVERS, MOCK_USERS, buildRoster } from "./mock-drivers";
 import { DEFAULT_MAPPINGS } from "./mock-imports";
 import { buildRates } from "./mock-invoices";
-import { demoToday } from "@/lib/date-utils";
+import { realToday } from "@/lib/date-utils";
 
-export const DB_VERSION = 3;
+export const DB_VERSION = 5;
 
 export const DEFAULT_SETTINGS: Settings = {
   timezone: DEFAULT_TIMEZONE,
@@ -43,7 +43,7 @@ export function createSeedDB(): DB {
     primeMovers: structuredClone(MOCK_PRIME_MOVERS),
     trailers: structuredClone(MOCK_TRAILERS),
     drivers: structuredClone(MOCK_DRIVERS),
-    roster: buildRoster(demoToday()),
+    roster: buildRoster(realToday()),
     leaves: [],
     movements: [],
     exceptions: [],

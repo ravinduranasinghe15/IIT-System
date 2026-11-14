@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useDriverActions } from "@/hooks/use-drivers";
-import { demoToday, formatDate } from "@/lib/date-utils";
+import { realToday, formatDate } from "@/lib/date-utils";
 import type { LeaveRecord } from "@/types/driver";
 
 const schema = z
@@ -44,7 +44,7 @@ export function LeaveRequestDialog({ open, onOpenChange, fixedDriverId }: { open
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { driverId: fixedDriverId ?? "", type: "Annual", from: demoToday(), to: demoToday(), reason: "" },
+    defaultValues: { driverId: fixedDriverId ?? "", type: "Annual", from: realToday(), to: realToday(), reason: "" },
   });
 
   const submit = handleSubmit((v) => {
