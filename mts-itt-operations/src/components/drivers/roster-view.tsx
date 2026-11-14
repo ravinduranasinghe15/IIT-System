@@ -8,9 +8,10 @@ import { StatCard } from "@/components/shared/stat-card";
 import { SearchInput } from "@/components/shared/search-input";
 import { NativeSelect } from "@/components/shared/native-select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
-import { addDays, demoToday, formatDay } from "@/lib/date-utils";
+import { addDays, demoToday, eachDay, formatDay } from "@/lib/date-utils";
 import { ROSTER_START } from "@/data/mock-drivers";
 import type { Driver, RosterEntry } from "@/types/driver";
 import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calendar";
@@ -22,6 +23,7 @@ export function RosterView() {
   const { can, isDriver, driverId } = useAuth();
   const today = demoToday();
   const [start, setStart] = useState(ROSTER_START);
+  const [end, setEnd] = useState(addDays(ROSTER_START, 13));
   const [q, setQ] = useState("");
   const [shiftFilter, setShiftFilter] = useState("");
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
@@ -30,7 +32,19 @@ export function RosterView() {
 
   const canEdit = can("roster.edit");
   const canAttend = can("roster.attendance");
-  const end = addDays(start, 13);
+  const span = eachDay(start, end).length;
+  const MAX_DAYS = 31;
+  const setRange = (from: string, to: string) => {
+    if (!from || !to) return;
+    const f = from;
+    let t = to;
+    if (t < f) t = f;
+    if (eachDay(f, t).length > MAX_DAYS) t = addDays(f, MAX_DAYS - 1);
+    setStart(f);
+    setEnd(t);
+  };
+  const shift = (dir: 1 | -1) => setRange(addDays(start, dir * span), addDays(end, dir * span));
+  const isDefaultRange = start === ROSTER_START && end === addDays(ROSTER_START, 13);
 
   const drivers = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -60,7 +74,7 @@ export function RosterView() {
         description={
           isDriver
             ? `Your shifts and prime-mover assignments${own ? ` (${own.name})` : ""}.`
-            : "Two-week shift calendar with morning / night coverage for continuous 24-hour operation."
+            : "Shift calendar with a selectable date range and morning / night coverage for continuous 24-hour operation."
         }
         actions={
           <>
@@ -114,23 +128,35 @@ export function RosterView() {
                 <NativeSelect className="hidden w-32 sm:block" value={shiftFilter} onValueChange={setShiftFilter} placeholder="All shifts" options={["Morning", "Night", "Rotating"]} aria-label="Default shift filter" />
               </>
             )}
-            <Button variant="outline" size="icon-sm" aria-label="Previous two weeks" onClick={() => setStart(addDays(start, -14))}>
+            <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => shift(-1)}>
               <ChevronLeft />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setStart(ROSTER_START)} disabled={start === ROSTER_START}>
+            <Button variant="outline" size="sm" onClick={() => setRange(ROSTER_START, addDays(ROSTER_START, 13))} disabled={isDefaultRange}>
               Current
             </Button>
-            <Button variant="outline" size="icon-sm" aria-label="Next two weeks" onClick={() => setStart(addDays(start, 14))}>
+            <Button variant="outline" size="icon-sm" aria-label="Next period" onClick={() => shift(1)}>
               <ChevronRight />
             </Button>
           </>
         }
       >
+        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5 text-sm">
+          <label className="flex items-center gap-2 text-slate">
+            From
+            <Input type="date" value={start} onChange={(e) => setRange(e.target.value, end < e.target.value ? e.target.value : end)} className="h-8 w-40" aria-label="Roster from date" />
+          </label>
+          <label className="flex items-center gap-2 text-slate">
+            To
+            <Input type="date" value={end} min={start} onChange={(e) => setRange(start, e.target.value)} className="h-8 w-40" aria-label="Roster to date" />
+          </label>
+          <span className="text-xs text-slate">{span} day{span === 1 ? "" : "s"} shown (up to {MAX_DAYS}). Days outside the seeded roster show as not rostered.</span>
+        </div>
         {drivers.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate">No drivers match.</div>
         ) : (
           <RosterCalendar
             start={start}
+            days={span}
             drivers={drivers}
             roster={roster}
             showCoverage={!isDriver}
