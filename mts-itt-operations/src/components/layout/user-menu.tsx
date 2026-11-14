@@ -48,9 +48,13 @@ export function UserMenu() {
               <DropdownMenuSeparator />
             </>
           )}
-          <DropdownMenuItem onClick={() => setConfirmReset(true)}>
-            <RotateCcw /> Reset demo data
-          </DropdownMenuItem>
+          {role !== "Driver" ? (
+            <DropdownMenuItem onClick={() => setConfirmReset(true)}>
+              <RotateCcw /> Reset demo data
+            </DropdownMenuItem>
+          ) : (
+            <div className="px-2 py-1.5 text-xs text-slate">Driver view: own movements and roster only.</div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <ConfirmDialog

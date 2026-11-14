@@ -57,7 +57,7 @@ export function ServiceLogs({ vehicleId }: { vehicleId: string }) {
           </Button>
         )}
       </div>
-      <DataTable columns={columns} rows={rows} getRowId={(s) => s.id} initialSort={{ key: "date", dir: "desc" }} pageSize={10} hidePagerIfSinglePage emptyTitle="No service records" emptyDescription="Add the first service log for this vehicle." />
+      <DataTable columns={columns} rows={rows} getRowId={(s) => s.id} initialSort={{ key: "date", dir: "desc" }} pageSize={5} hidePagerIfSinglePage emptyTitle="No service records" emptyDescription="Add the first service log for this vehicle." />
       {dialog && <ServiceLogDialog vehicleId={vehicleId} record={dialog.record} open onOpenChange={(o) => !o && setDialog(null)} />}
     </div>
   );

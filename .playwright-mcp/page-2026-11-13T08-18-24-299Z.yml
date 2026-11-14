@@ -1,0 +1,418 @@
+- generic [active] [ref=e1]:
+  - generic [aria-hidden] [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e11]:
+          - generic [ref=e12]: MTS ITT Operations
+          - generic [ref=e13]: by Techneura Labs
+        - generic [ref=e14]: Demo environment
+        - navigation [ref=e17]:
+          - link [ref=e18] [cursor=pointer]:
+            - /url: /dashboard
+            - generic [ref=e24]: Dashboard
+          - link [ref=e25] [cursor=pointer]:
+            - /url: /movements
+            - generic [ref=e30]: Movements
+          - link [ref=e31] [cursor=pointer]:
+            - /url: /terminal-imports
+            - generic [ref=e35]: Terminal Imports
+          - link [ref=e36] [cursor=pointer]:
+            - /url: /exceptions
+            - generic [ref=e39]: Exceptions
+          - link [ref=e40] [cursor=pointer]:
+            - /url: /evidence
+            - generic [ref=e44]: Chits & Evidence
+          - link [ref=e45] [cursor=pointer]:
+            - /url: /drivers
+            - generic [ref=e51]: Drivers & Roster
+          - link [ref=e52] [cursor=pointer]:
+            - /url: /payments
+            - generic [ref=e56]: Driver Payments
+          - link [ref=e57] [cursor=pointer]:
+            - /url: /invoicing
+            - generic [ref=e61]: Invoicing
+          - link [ref=e62] [cursor=pointer]:
+            - /url: /fleet
+            - generic [ref=e68]: Fleet & Fuel
+          - link [ref=e69] [cursor=pointer]:
+            - /url: /reports
+            - generic [ref=e72]: Reports & Analytics
+          - link [ref=e73] [cursor=pointer]:
+            - /url: /master-data
+            - generic [ref=e78]: Master Data
+          - link [ref=e79] [cursor=pointer]:
+            - /url: /settings
+            - generic [ref=e83]: Settings
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - generic [ref=e86]: HJ
+            - generic [ref=e87]:
+              - generic [ref=e88]: Hasini Jayawardena
+              - generic [ref=e89]: Administrator
+          - button [ref=e90]: Collapse
+    - generic [ref=e94]:
+      - banner [ref=e95]:
+        - generic [ref=e96]:
+          - generic [ref=e97]: Driver Payments
+          - navigation [ref=e98]:
+            - link [ref=e99] [cursor=pointer]:
+              - /url: /dashboard
+            - generic [ref=e103]: Driver Payments
+        - textbox [ref=e108]:
+          - /placeholder: Search movements, containers, drivers…
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - generic [ref=e111]: Demo role
+            - combobox [ref=e113]
+          - button [ref=e114]:
+            - generic [ref=e115]: "27"
+          - button [ref=e116]:
+            - generic [ref=e117]: HJ
+            - generic [ref=e118]:
+              - generic [ref=e119]: Hasini Jayawardena
+              - generic [ref=e120]: Administrator
+      - main [ref=e123]:
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - generic [ref=e127]:
+              - heading [level=1] [ref=e129]: Driver Payments
+              - paragraph [ref=e130]: "15-day driver pay drafts: eligible movements, rates, adjustments and simulated approval."
+            - button [ref=e132]: Generate pay draft
+          - generic [ref=e133]:
+            - generic [ref=e138]:
+              - generic [ref=e139]: Current Pay Period
+              - generic [ref=e140]: "3"
+              - generic [ref=e141]: 31 Oct 2026 – 14 Nov 2026
+            - generic [ref=e149]:
+              - generic [ref=e150]: Total Drivers
+              - generic [ref=e151]: "14"
+              - generic [ref=e152]: In selected period
+            - generic [ref=e159]:
+              - generic [ref=e160]: Eligible Movements
+              - generic [ref=e161]: "101"
+              - generic [ref=e162]: In selected period
+            - generic [ref=e168]:
+              - generic [ref=e169]: Draft Payments
+              - generic [ref=e170]: AUD 1,687.00
+              - generic [ref=e171]: 1 draft run(s)
+            - generic [ref=e177]:
+              - generic [ref=e178]: Approved Payments
+              - generic [ref=e179]: AUD 4,414.00
+              - generic [ref=e180]: 2 approved run(s)
+          - generic [ref=e186]:
+            - generic [ref=e187]: Total = Eligible Payable Units × Rate + Adjustments
+            - paragraph [ref=e188]: "Pay unit mode: Per trailer (1 unit per journey). Rates: 20FT AUD 14.00, 40FT AUD 21.00 per unit. Movements with unresolved exceptions, pending correction approval, no driver or a non-paying status are excluded and listed with reasons."
+            - paragraph [ref=e189]:
+              - text: Demo assumption – contractual treatment is not yet confirmed by MTS and is configurable in Settings.
+              - link [ref=e192] [cursor=pointer]:
+                - /url: /settings
+                - text: Change in Settings
+          - generic [ref=e193]:
+            - generic [ref=e195]:
+              - heading [level=2] [ref=e196]: Pay runs
+              - paragraph [ref=e197]: Generated drafts and approved runs. Approved runs are immutable.
+            - table [ref=e202]:
+              - rowgroup [ref=e203]:
+                - row [ref=e204]:
+                  - columnheader [ref=e205]:
+                    - button [ref=e206]: Pay Run
+                  - columnheader [ref=e210]:
+                    - button [ref=e211]: Period
+                  - columnheader [ref=e214]: Drivers
+                  - columnheader [ref=e215]: Units
+                  - columnheader [ref=e216]:
+                    - button [ref=e217]: Total
+                  - columnheader [ref=e221]: Status
+                  - columnheader [ref=e222]:
+                    - button [ref=e223]: Generated
+                  - columnheader [ref=e227]: Approved By
+                  - columnheader [ref=e228]: Actions
+              - rowgroup [ref=e229]:
+                - row [ref=e230]:
+                  - cell [ref=e231]:
+                    - link [ref=e232] [cursor=pointer]:
+                      - /url: /payments/PAY-003
+                      - text: PAY-003
+                  - cell [ref=e233]: 31 Oct 2026 – 14 Nov 2026
+                  - cell [ref=e234]: "15"
+                  - cell [ref=e235]: "101"
+                  - cell [ref=e236]: AUD 1,687.00
+                  - cell [ref=e237]:
+                    - generic [ref=e238]: Draft
+                  - cell [ref=e239]: 13 Nov 2026 09:10
+                  - cell [ref=e240]: —
+                  - cell [ref=e241]:
+                    - button [ref=e242] [cursor=pointer]: Open
+                - row [ref=e243]:
+                  - cell [ref=e244]:
+                    - link [ref=e245] [cursor=pointer]:
+                      - /url: /payments/PAY-002
+                      - text: PAY-002
+                  - cell [ref=e246]: 16 Oct 2026 – 30 Oct 2026
+                  - cell [ref=e247]: "14"
+                  - cell [ref=e248]: "129"
+                  - cell [ref=e249]: AUD 2,163.00
+                  - cell [ref=e250]:
+                    - generic [ref=e251]: Approved
+                  - cell [ref=e252]: 31 Oct 2026 09:30
+                  - cell [ref=e253]: Hasini Jayawardena
+                  - cell [ref=e254]:
+                    - button [ref=e255] [cursor=pointer]: Open
+                - row [ref=e256]:
+                  - cell [ref=e257]:
+                    - link [ref=e258] [cursor=pointer]:
+                      - /url: /payments/PAY-001
+                      - text: PAY-001
+                  - cell [ref=e259]: 01 Oct 2026 – 15 Oct 2026
+                  - cell [ref=e260]: "14"
+                  - cell [ref=e261]: "130"
+                  - cell [ref=e262]: AUD 2,251.00
+                  - cell [ref=e263]:
+                    - generic [ref=e264]: Approved
+                  - cell [ref=e265]: 16 Oct 2026 09:30
+                  - cell [ref=e266]: Hasini Jayawardena
+                  - cell [ref=e267]:
+                    - button [ref=e268] [cursor=pointer]: Open
+          - generic [ref=e269]:
+            - generic [ref=e270]:
+              - generic [ref=e271]:
+                - heading [level=2] [ref=e272]: Driver earnings by period
+                - paragraph [ref=e273]: Showing PAY-003. Open the pay run to adjust and approve.
+              - generic [ref=e274]:
+                - generic [ref=e275]: Draft
+                - combobox [ref=e277]
+                - button [ref=e278]: Open PAY-003
+            - generic [ref=e280]:
+              - table [ref=e283]:
+                - rowgroup [ref=e284]:
+                  - row [ref=e285]:
+                    - columnheader [ref=e286]:
+                      - button [ref=e287]: Driver ID
+                    - columnheader [ref=e290]:
+                      - button [ref=e291]: Name
+                    - columnheader [ref=e295]:
+                      - button [ref=e296]: Completed Movements
+                    - columnheader [ref=e300]:
+                      - button [ref=e301]: Eligible Payable Units
+                    - columnheader [ref=e305]:
+                      - button [ref=e306]: Rate (blended)
+                    - columnheader [ref=e310]:
+                      - button [ref=e311]: Adjustments
+                    - columnheader [ref=e315]:
+                      - button [ref=e316]: Excluded
+                    - columnheader [ref=e320]:
+                      - button [ref=e321]: Total Earnings
+                    - columnheader [ref=e325]: Status
+                    - columnheader [ref=e326]: Actions
+                - rowgroup [ref=e327]:
+                  - row [ref=e328]:
+                    - cell [ref=e329]:
+                      - link [ref=e330] [cursor=pointer]:
+                        - /url: /drivers/DR-001
+                        - text: DR-001
+                    - cell [ref=e331]: Nuwan Perera
+                    - cell [ref=e332]: "8"
+                    - cell [ref=e333]: "8"
+                    - cell [ref=e334]: AUD 14.00
+                    - cell [ref=e335]: AUD 0.00
+                    - cell [ref=e336]: "0"
+                    - cell [ref=e337]: AUD 112.00
+                    - cell [ref=e338]:
+                      - generic [ref=e339]: Draft
+                    - cell [ref=e340]:
+                      - button [ref=e342]: Breakdown
+                  - row [ref=e343]:
+                    - cell [ref=e344]:
+                      - link [ref=e345] [cursor=pointer]:
+                        - /url: /drivers/DR-002
+                        - text: DR-002
+                    - cell [ref=e346]: Kasun Fernando
+                    - cell [ref=e347]: "7"
+                    - cell [ref=e348]: "7"
+                    - cell [ref=e349]: AUD 15.00
+                    - cell [ref=e350]: AUD 0.00
+                    - cell [ref=e351]: "0"
+                    - cell [ref=e352]: AUD 105.00
+                    - cell [ref=e353]:
+                      - generic [ref=e354]: Draft
+                    - cell [ref=e355]:
+                      - button [ref=e357]: Breakdown
+                  - row [ref=e358]:
+                    - cell [ref=e359]:
+                      - link [ref=e360] [cursor=pointer]:
+                        - /url: /drivers/DR-003
+                        - text: DR-003
+                    - cell [ref=e361]: Sampath Jayasinghe
+                    - cell [ref=e362]: "3"
+                    - cell [ref=e363]: "3"
+                    - cell [ref=e364]: AUD 16.33
+                    - cell [ref=e365]: AUD 0.00
+                    - cell [ref=e366]: "1"
+                    - cell [ref=e367]: AUD 49.00
+                    - cell [ref=e368]:
+                      - generic [ref=e369]: Draft
+                    - cell [ref=e370]:
+                      - button [ref=e372]: Breakdown
+                  - row [ref=e373]:
+                    - cell [ref=e374]:
+                      - link [ref=e375] [cursor=pointer]:
+                        - /url: /drivers/DR-004
+                        - text: DR-004
+                    - cell [ref=e376]: Chaminda Silva
+                    - cell [ref=e377]: "8"
+                    - cell [ref=e378]: "8"
+                    - cell [ref=e379]: AUD 20.13
+                    - cell [ref=e380]: AUD 0.00
+                    - cell [ref=e381]: "0"
+                    - cell [ref=e382]: AUD 161.00
+                    - cell [ref=e383]:
+                      - generic [ref=e384]: Draft
+                    - cell [ref=e385]:
+                      - button [ref=e387]: Breakdown
+                  - row [ref=e388]:
+                    - cell [ref=e389]:
+                      - link [ref=e390] [cursor=pointer]:
+                        - /url: /drivers/DR-005
+                        - text: DR-005
+                    - cell [ref=e391]: Ruwan Wickramasinghe
+                    - cell [ref=e392]: "12"
+                    - cell [ref=e393]: "10"
+                    - cell [ref=e394]: AUD 16.10
+                    - cell [ref=e395]: AUD 0.00
+                    - cell [ref=e396]: "4"
+                    - cell [ref=e397]: AUD 161.00
+                    - cell [ref=e398]:
+                      - generic [ref=e399]: Draft
+                    - cell [ref=e400]:
+                      - button [ref=e402]: Breakdown
+                  - row [ref=e403]:
+                    - cell [ref=e404]:
+                      - link [ref=e405] [cursor=pointer]:
+                        - /url: /drivers/DR-006
+                        - text: DR-006
+                    - cell [ref=e406]: Dilan Rathnayake
+                    - cell [ref=e407]: "4"
+                    - cell [ref=e408]: "3"
+                    - cell [ref=e409]: AUD 14.00
+                    - cell [ref=e410]: AUD 0.00
+                    - cell [ref=e411]: "1"
+                    - cell [ref=e412]: AUD 42.00
+                    - cell [ref=e413]:
+                      - generic [ref=e414]: Draft
+                    - cell [ref=e415]:
+                      - button [ref=e417]: Breakdown
+                  - row [ref=e418]:
+                    - cell [ref=e419]:
+                      - link [ref=e420] [cursor=pointer]:
+                        - /url: /drivers/DR-007
+                        - text: DR-007
+                    - cell [ref=e421]: Pradeep Kumara
+                    - cell [ref=e422]: "4"
+                    - cell [ref=e423]: "4"
+                    - cell [ref=e424]: AUD 15.75
+                    - cell [ref=e425]: AUD 0.00
+                    - cell [ref=e426]: "1"
+                    - cell [ref=e427]: AUD 63.00
+                    - cell [ref=e428]:
+                      - generic [ref=e429]: Draft
+                    - cell [ref=e430]:
+                      - button [ref=e432]: Breakdown
+                  - row [ref=e433]:
+                    - cell [ref=e434]:
+                      - link [ref=e435] [cursor=pointer]:
+                        - /url: /drivers/DR-008
+                        - text: DR-008
+                    - cell [ref=e436]: Lakmal Gunawardena
+                    - cell [ref=e437]: "5"
+                    - cell [ref=e438]: "5"
+                    - cell [ref=e439]: AUD 18.20
+                    - cell [ref=e440]: AUD 0.00
+                    - cell [ref=e441]: "0"
+                    - cell [ref=e442]: AUD 91.00
+                    - cell [ref=e443]:
+                      - generic [ref=e444]: Draft
+                    - cell [ref=e445]:
+                      - button [ref=e447]: Breakdown
+                  - row [ref=e448]:
+                    - cell [ref=e449]:
+                      - link [ref=e450] [cursor=pointer]:
+                        - /url: /drivers/DR-009
+                        - text: DR-009
+                    - cell [ref=e451]: Janaka Bandara
+                    - cell [ref=e452]: "5"
+                    - cell [ref=e453]: "5"
+                    - cell [ref=e454]: AUD 21.00
+                    - cell [ref=e455]: AUD 0.00
+                    - cell [ref=e456]: "2"
+                    - cell [ref=e457]: AUD 105.00
+                    - cell [ref=e458]:
+                      - generic [ref=e459]: Draft
+                    - cell [ref=e460]:
+                      - button [ref=e462]: Breakdown
+                  - row [ref=e463]:
+                    - cell [ref=e464]:
+                      - link [ref=e465] [cursor=pointer]:
+                        - /url: /drivers/DR-010
+                        - text: DR-010
+                    - cell [ref=e466]: Thushara Madushanka
+                    - cell [ref=e467]: "16"
+                    - cell [ref=e468]: "16"
+                    - cell [ref=e469]: AUD 14.88
+                    - cell [ref=e470]: AUD 0.00
+                    - cell [ref=e471]: "3"
+                    - cell [ref=e472]: AUD 238.00
+                    - cell [ref=e473]:
+                      - generic [ref=e474]: Draft
+                    - cell [ref=e475]:
+                      - button [ref=e477]: Breakdown
+              - generic [ref=e478]:
+                - generic [ref=e479]: Showing 1–10 of 15
+                - generic [ref=e480]:
+                  - generic [ref=e481]: Rows
+                  - combobox [ref=e483]
+                  - button [disabled]
+                  - generic [ref=e484]: 1 / 2
+                  - button [ref=e485]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e491] [cursor=pointer]
+  - alert [ref=e495]
+  - dialog "Generate pay draft" [ref=e499]:
+    - generic [ref=e500]:
+      - heading "Generate pay draft" [level=2] [ref=e501]
+      - paragraph [ref=e502]: Pick a 15-day pay period. Eligible movements are retrieved and priced from the configured rates; exclusions are listed with reasons.
+    - generic [ref=e504]:
+      - generic [ref=e505]:
+        - generic [ref=e506]:
+          - text: Pay period
+          - generic [ref=e507]: "*"
+        - combobox "Pay period" [ref=e509]:
+          - option "31 Oct 2026 – 14 Nov 2026" [selected]
+          - option "16 Oct 2026 – 30 Oct 2026"
+          - option "01 Oct 2026 – 15 Oct 2026"
+          - option "Custom start date (15 days)…"
+      - generic [ref=e510]: Draft PAY-003 already exists for this period. Generating will refresh it from current movements and preserve its adjustments.
+      - generic [ref=e513]:
+        - generic [ref=e514]:
+          - generic [ref=e515]: Drivers
+          - generic [ref=e516]: "15"
+        - generic [ref=e517]:
+          - generic [ref=e518]: Eligible movements
+          - generic [ref=e519]: "101"
+        - generic [ref=e520]:
+          - generic [ref=e521]: Excluded
+          - generic [ref=e522]: "21"
+        - generic [ref=e523]:
+          - generic [ref=e524]: Draft total
+          - generic [ref=e525]: AUD 1,687.00
+        - generic [ref=e526]: 101 payable units · Per trailer (1 unit per journey)
+      - generic [ref=e531]:
+        - generic [ref=e532]: Total = Eligible Payable Units × Rate + Adjustments
+        - paragraph [ref=e533]: "Pay unit mode: Per trailer (1 unit per journey). Rates: 20FT AUD 14.00, 40FT AUD 21.00 per unit. Movements with unresolved exceptions, pending correction approval, no driver or a non-paying status are excluded and listed with reasons."
+        - paragraph [ref=e534]:
+          - text: Demo assumption – contractual treatment is not yet confirmed by MTS and is configurable in Settings.
+          - link "Change in Settings" [ref=e537] [cursor=pointer]:
+            - /url: /settings
+    - generic [ref=e538]:
+      - button "Cancel" [ref=e539]
+      - button "Regenerate draft" [ref=e540]
+    - button "Close" [ref=e541]

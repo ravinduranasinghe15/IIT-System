@@ -73,7 +73,7 @@ export function DashboardView() {
   return (
     <div>
       <PageHeader title="Operations Dashboard" description={description} />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-3">
         <StatCard label="Movements Today" value={stats.total} hint="Journeys" icon={Route} tone="navy" onClick={() => router.push("/movements")} />
         <StatCard label="Completed" value={stats.completed} hint="Today" icon={CheckCircle2} tone="green" />
         <StatCard label="Pending" value={stats.pending} hint="Pending / in transit / review" icon={Clock} tone="orange" />

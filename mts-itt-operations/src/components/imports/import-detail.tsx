@@ -159,7 +159,7 @@ export function ImportDetailView() {
           columns={exColumns}
           rows={exceptions}
           getRowId={(e) => e.id}
-          pageSize={10}
+          pageSize={5}
           hidePagerIfSinglePage
           emptyTitle="No exceptions raised"
           emptyDescription="All imported rows passed reconciliation."

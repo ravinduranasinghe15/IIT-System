@@ -156,7 +156,7 @@ export function InvoiceDetail() {
               rows={bySize}
               getRowId={(r) => r.size}
               hidePagerIfSinglePage
-              pageSize={10}
+              pageSize={5}
             />
           </SectionCard>
           <SectionCard title="Route breakdown" bodyClassName="p-0">
@@ -171,13 +171,13 @@ export function InvoiceDetail() {
               rows={byRoute}
               getRowId={(r) => r.route}
               hidePagerIfSinglePage
-              pageSize={10}
+              pageSize={5}
             />
           </SectionCard>
         </div>
 
         <SectionCard title={`Line items (${inv.lines.length})`} bodyClassName="p-0">
-          <DataTable columns={lineColumns(inv.currency)} rows={inv.lines} getRowId={(l) => l.movementId} pageSize={10} initialSort={{ key: "mv", dir: "asc" }} />
+          <DataTable columns={lineColumns(inv.currency)} rows={inv.lines} getRowId={(l) => l.movementId} pageSize={5} initialSort={{ key: "mv", dir: "asc" }} />
         </SectionCard>
 
         {inv.excluded.length > 0 && (

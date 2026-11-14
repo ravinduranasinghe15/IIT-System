@@ -18,7 +18,7 @@ export function PayLinesTable({
   editable,
   onBreakdown,
   onAdjust,
-  pageSize = 10,
+  pageSize = 5,
 }: {
   lines: PayLine[];
   currency: string;

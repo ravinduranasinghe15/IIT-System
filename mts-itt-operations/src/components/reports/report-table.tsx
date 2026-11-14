@@ -91,7 +91,7 @@ export function ReportTable({ result, currency, title }: { result: ReportResult;
         columns={columns}
         rows={result.rows}
         getRowId={(r) => String(r.id)}
-        pageSize={10}
+        pageSize={5}
         emptyTitle="No data for the selected filters"
         emptyDescription="No records match this report and filter combination. Try a wider date range or reset the filters."
         hidePagerIfSinglePage

@@ -119,7 +119,10 @@ function Notifications() {
   const { db, update } = useApp();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const unread = db.notifications.filter((n) => !n.read).length;
+  const { isDriver } = useAuth();
+  // Drivers never see operational/financial notifications.
+  const notifications = isDriver ? [] : db.notifications;
+  const unread = notifications.filter((n) => !n.read).length;
   const dot: Record<string, string> = { critical: "bg-danger", warning: "bg-warning", info: "bg-brand", success: "bg-success" };
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -140,8 +143,8 @@ function Notifications() {
           </button>
         </div>
         <div className="scroll-thin max-h-96 overflow-y-auto">
-          {db.notifications.length === 0 && <div className="px-3 py-6 text-center text-sm text-slate">You&apos;re all caught up.</div>}
-          {db.notifications.map((n) => (
+          {notifications.length === 0 && <div className="px-3 py-6 text-center text-sm text-slate">You&apos;re all caught up.</div>}
+          {notifications.map((n) => (
             <button
               key={n.id}
               type="button"
@@ -171,16 +174,16 @@ function Notifications() {
 
 export function AppHeader({ onMenu }: { onMenu: () => void }) {
   const pathname = usePathname();
-  const { role, setRole } = useAuth();
+  const { role, setRole, isDriver } = useAuth();
   const { db } = useApp();
   return (
     <header className="no-print flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:px-5">
-      <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenu} aria-label="Open navigation">
+      <Button variant="ghost" size="icon" className={cn("md:hidden", isDriver && "hidden")} onClick={onMenu} aria-label="Open navigation">
         <Menu />
       </Button>
       <div className="min-w-0 flex-1 md:flex-none md:basis-64">
         <div className="truncate text-sm font-semibold leading-tight text-navy">{titleForPath(pathname)}</div>
-        <Breadcrumb />
+        {!isDriver && <Breadcrumb />}
       </div>
       <GlobalSearch />
       <div className="ml-auto flex items-center gap-2">

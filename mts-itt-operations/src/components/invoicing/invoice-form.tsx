@@ -175,7 +175,7 @@ export function InvoiceForm() {
             }
           >
             {lines.length ? (
-              <DataTable columns={cols} rows={lines} getRowId={(l) => l.movementId} pageSize={10} hidePagerIfSinglePage />
+              <DataTable columns={cols} rows={lines} getRowId={(l) => l.movementId} pageSize={5} hidePagerIfSinglePage />
             ) : (
               <EmptyState title="No eligible movements" description="No billable movements with an effective rate match these criteria for the month." />
             )}

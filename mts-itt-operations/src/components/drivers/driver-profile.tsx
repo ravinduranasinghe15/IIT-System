@@ -202,7 +202,7 @@ export function DriverProfile() {
 
         <TabsContent value="attendance">
           <SectionCard title="Attendance history" description="From the roster; recorded by supervisors and managers." bodyClassName="p-0">
-            <DataTable columns={attCols} rows={rosterRows} getRowId={(r) => r.id} initialSort={{ key: "date", dir: "desc" }} pageSize={14} pageSizeOptions={[14, 28]} emptyTitle="No roster entries" />
+            <DataTable columns={attCols} rows={rosterRows} getRowId={(r) => r.id} initialSort={{ key: "date", dir: "desc" }} pageSize={5} pageSizeOptions={[5, 10, 25]} emptyTitle="No roster entries" />
           </SectionCard>
         </TabsContent>
 

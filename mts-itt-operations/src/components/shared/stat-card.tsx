@@ -34,20 +34,20 @@ export function StatCard({
     <Comp
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-sm",
+        "flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left shadow-sm",
         onClick && "cursor-pointer transition hover:border-brand/40 hover:shadow-md",
         className,
       )}
     >
       {Icon && (
-        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", TONES[tone])}>
-          <Icon className="size-5" />
+        <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", TONES[tone])}>
+          <Icon className="size-[18px]" />
         </div>
       )}
       <div className="min-w-0">
-        <div className="truncate text-xs font-medium uppercase tracking-wide text-slate">{label}</div>
+        <div className="text-xs font-medium uppercase leading-tight tracking-wide text-slate">{label}</div>
         <div className="text-2xl font-semibold leading-tight text-ink">{value}</div>
-        {hint && <div className="truncate text-xs text-slate">{hint}</div>}
+        {hint && <div className="text-xs leading-tight text-slate">{hint}</div>}
       </div>
     </Comp>
   );

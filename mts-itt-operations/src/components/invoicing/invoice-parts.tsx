@@ -90,7 +90,7 @@ export function ExcludedTable({ excluded }: { excluded: { movementId: string; re
       columns={columns}
       rows={excluded}
       getRowId={(e) => e.movementId}
-      pageSize={10}
+      pageSize={5}
       hidePagerIfSinglePage
       emptyTitle="Nothing excluded"
       emptyDescription="Every movement for this selection is billable."

@@ -6,6 +6,8 @@ import type { DB } from "@/types/db";
 import { DB_VERSION, createSeedDB } from "@/data/seed";
 
 const STORAGE_KEY = "mts-itt-demo-db-v1";
+const RUN_KEY = "mts-itt-server-run";
+const RUN_ID = process.env.NEXT_PUBLIC_SERVER_RUN_ID ?? "";
 
 interface AppCtx {
   /** null until the client has hydrated from localStorage (never read it during SSR) */
@@ -21,7 +23,10 @@ const Ctx = createContext<AppCtx | null>(null);
 
 function loadDb(): DB {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    // A new server start means a new run id: discard whatever the browser kept and start clean.
+    const sameRun = window.localStorage.getItem(RUN_KEY) === RUN_ID;
+    window.localStorage.setItem(RUN_KEY, RUN_ID);
+    const raw = sameRun ? window.localStorage.getItem(STORAGE_KEY) : null;
     if (raw) {
       const parsed = JSON.parse(raw) as DB;
       if (parsed.version === DB_VERSION) return parsed;
@@ -56,6 +61,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Hydrating from localStorage after mount is intentional (avoids SSR/hydration mismatch).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDb(loaded);
+    // Keep other same-origin windows (e.g. the driver phone preview iframe) in sync.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        const next = JSON.parse(e.newValue) as DB;
+        if (next.version !== DB_VERSION) return;
+        ref.current = next;
+        setDb(next);
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const update = useCallback(<T,>(fn: (draft: DB) => T): T => {

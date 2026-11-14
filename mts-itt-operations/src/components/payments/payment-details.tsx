@@ -210,7 +210,7 @@ export function PayRunDetail() {
           editable={manage}
           onBreakdown={setBreakdown}
           onAdjust={setAdjusting}
-          pageSize={25}
+          pageSize={5}
         />
       </SectionCard>
 

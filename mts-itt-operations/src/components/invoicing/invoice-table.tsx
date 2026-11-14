@@ -12,7 +12,7 @@ import type { Invoice } from "@/types/invoice";
 export function InvoiceTable({
   invoices,
   onDelete,
-  pageSize = 10,
+  pageSize = 5,
 }: {
   invoices: Invoice[];
   onDelete?: (inv: Invoice) => void;

@@ -51,7 +51,7 @@ export function RowResultsTable({
   onToggleInclude,
   canInclude = true,
   fileLabel = "import",
-  pageSize = 15,
+  pageSize = 5,
 }: {
   rows: ImportRowResult[];
   /** Duplicate row numbers the reviewer chose to import anyway (validation step only) */
@@ -211,7 +211,7 @@ export function RowResultsTable({
         rows={visible}
         getRowId={(r) => String(r.rowNo)}
         pageSize={pageSize}
-        pageSizeOptions={[15, 30, 100]}
+        pageSizeOptions={[5, 10, 25]}
         emptyTitle="No rows match"
         emptyDescription="Change the filter or search term."
         rowClassName={(r) => (r.status === "Invalid" ? "bg-red-50/40" : r.status === "Duplicate" ? "bg-amber-50/40" : undefined)}

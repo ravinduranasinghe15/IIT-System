@@ -108,7 +108,7 @@ export function FuelReconciliation({ vehicleId }: { vehicleId?: string }) {
           <Download /> Export CSV
         </Button>
       </div>
-      <DataTable columns={columns} rows={rows} getRowId={(r) => r.key} initialSort={{ key: "month", dir: "desc" }} pageSize={10} rowClassName={(r) => (r.flagged && !r.review ? "bg-red-50/40" : undefined)} emptyTitle="No reconciliation rows" emptyDescription="Import GPS data and add fuel invoices to reconcile." />
+      <DataTable columns={columns} rows={rows} getRowId={(r) => r.key} initialSort={{ key: "month", dir: "desc" }} pageSize={5} rowClassName={(r) => (r.flagged && !r.review ? "bg-red-50/40" : undefined)} emptyTitle="No reconciliation rows" emptyDescription="Import GPS data and add fuel invoices to reconcile." />
       {reviewRow && <FuelReviewDialog row={reviewRow} onClose={() => setReviewRow(null)} />}
     </div>
   );

@@ -103,7 +103,7 @@ export function FuelTable({ records, showVehicle = true, filters = true }: { rec
           </Button>
         </div>
       )}
-      <DataTable columns={columns} rows={rows} getRowId={(r) => r.id} initialSort={{ key: "date", dir: "desc" }} pageSize={10} emptyTitle="No fuel records" emptyDescription="Add a fuel entry or import a Track My Car file." />
+      <DataTable columns={columns} rows={rows} getRowId={(r) => r.id} initialSort={{ key: "date", dir: "desc" }} pageSize={5} emptyTitle="No fuel records" emptyDescription="Add a fuel entry or import a Track My Car file." />
     </div>
   );
 }
