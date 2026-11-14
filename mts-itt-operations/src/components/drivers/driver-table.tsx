@@ -152,7 +152,7 @@ export function DriverTable() {
       <div className="flex flex-wrap items-center gap-2 border-b p-3">
         <SearchInput value={q} onChange={setQ} placeholder="Search name, ID, licence, prime mover…" className="w-full sm:w-72" />
         <NativeSelect className="w-36" value={status} onValueChange={setStatus} placeholder="All statuses" options={["Active", "On Leave", "Suspended", "Inactive"]} aria-label="Status filter" />
-        <NativeSelect className="w-36" value={shift} onValueChange={setShift} placeholder="All shifts" options={["Morning", "Night", "Rotating"]} aria-label="Shift filter" />
+        <NativeSelect className="w-36" value={shift} onValueChange={setShift} placeholder="All shifts" options={["Morning", "Afternoon", "Night", "Rotating"]} aria-label="Shift filter" />
         <NativeSelect
           className="w-44"
           value={assigned}

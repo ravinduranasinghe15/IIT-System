@@ -7,7 +7,7 @@ import { DEFAULT_MAPPINGS } from "./mock-imports";
 import { buildRates } from "./mock-invoices";
 import { realToday } from "@/lib/date-utils";
 
-export const DB_VERSION = 5;
+export const DB_VERSION = 8;
 
 export const DEFAULT_SETTINGS: Settings = {
   timezone: DEFAULT_TIMEZONE,
@@ -45,6 +45,7 @@ export function createSeedDB(): DB {
     drivers: structuredClone(MOCK_DRIVERS),
     roster: buildRoster(realToday()),
     leaves: [],
+    openShifts: [],
     movements: [],
     exceptions: [],
     imports: [],

@@ -1,7 +1,8 @@
 import type { DB } from "@/types/db";
 import type { AttendanceStatus, Driver, DriverStatus, LeaveRecord, RosterEntry, RosterShift, ShiftType } from "@/types/driver";
 import { actorOf, logAudit, notify, nowOf } from "@/lib/db-helpers";
-import { eachDay, formatDate } from "@/lib/date-utils";
+import { addDays, eachDay, formatDate, realToday } from "@/lib/date-utils";
+import { SHIFT_HOURS, availableDrivers, breaksWeeklyOff, getterFor, isWorkShift, restConflict, type WorkShift } from "@/lib/roster-rules";
 import { nextSeqId } from "@/lib/fleet-utils";
 
 /** Driver, roster, attendance and leave mutators. All take a draft DB (use inside `update`). */
@@ -114,7 +115,15 @@ export interface RosterPatch {
   attendance?: AttendanceStatus;
 }
 
-const isWorking = (s: RosterShift) => s === "Morning" || s === "Night";
+const isWorking = (s: RosterShift) => isWorkShift(s);
+
+/** A truck that is free on `date` for `shift` (not on another driver's shift), avoiding the driver's truck from the day before. */
+function freeTruck(d: DB, date: string, shift: WorkShift, driverId: string): string | null {
+  const taken = new Set(d.roster.filter((r) => r.date === date && r.shift === shift && r.driverId !== driverId && r.primeMoverId).map((r) => r.primeMoverId as string));
+  const yesterday = d.roster.find((r) => r.driverId === driverId && r.date === addDays(date, -1))?.primeMoverId ?? null;
+  const free = d.primeMovers.filter((p) => p.status === "Active" && !taken.has(p.id));
+  return (free.find((p) => p.id !== yesterday) ?? free[0])?.id ?? null;
+}
 
 /** Finds the roster cell for (driver, date) or generates it (as "Off") so missing cells can be edited. */
 export function ensureRosterEntry(d: DB, driverId: string, date: string): RosterEntry {
@@ -138,13 +147,22 @@ export function updateRosterCell(d: DB, driverId: string, date: string, patch: R
   const before = `${entry.shift}${entry.primeMoverId ? ` on ${entry.primeMoverId}` : ""}, ${entry.attendance}`;
   const actor = actorOf(d);
   if (patch.shift !== undefined && patch.shift !== entry.shift) {
+    if (isWorkShift(patch.shift)) {
+      // Roster rules: enough rest next to the neighbouring days, and at least one day off in every 7 days.
+      const get = getterFor(d.roster, driverId);
+      const rest = restConflict(get, date, patch.shift);
+      if (rest) throw new Error(rest);
+      if (breaksWeeklyOff(get, date)) throw new Error(`${drv.name} would have no day off in a 7-day stretch. Every driver needs at least one day off every week.`);
+    }
     entry.shift = patch.shift;
     if (!isWorking(patch.shift)) {
       entry.primeMoverId = null;
       entry.attendance = "Scheduled";
       entry.recordedBy = undefined;
+      entry.coveredBy = undefined;
+      entry.coveringFor = undefined;
     } else if (!entry.primeMoverId) {
-      entry.primeMoverId = drv.primeMoverId;
+      entry.primeMoverId = freeTruck(d, date, patch.shift as WorkShift, driverId);
     }
   }
   if (patch.primeMoverId !== undefined && isWorking(entry.shift)) entry.primeMoverId = patch.primeMoverId || null;
@@ -165,7 +183,7 @@ export function updateRosterCell(d: DB, driverId: string, date: string, patch: R
 
 export function recordAttendance(d: DB, driverId: string, date: string, status: AttendanceStatus): RosterEntry {
   const entry = d.roster.find((r) => r.driverId === driverId && r.date === date);
-  if (!entry || !isWorking(entry.shift)) throw new Error("Attendance can only be recorded for a Morning or Night shift.");
+  if (!entry || !isWorking(entry.shift)) throw new Error("Attendance can only be recorded for a Morning, Afternoon or Night shift.");
   return updateRosterCell(d, driverId, date, { attendance: status });
 }
 
@@ -221,11 +239,24 @@ export function decideLeave(d: DB, leaveId: string, decision: "Approved" | "Reje
   if (decision === "Approved") {
     for (const date of eachDay(rec.from, rec.to)) {
       const entry = ensureRosterEntry(d, rec.driverId, date);
+      if (isWorkShift(entry.shift) && date >= realToday()) {
+        d.openShifts.push({
+          id: nextSeqId(d.openShifts.map((o) => o.id), "OS-", 4),
+          date,
+          shift: entry.shift,
+          primeMoverId: entry.primeMoverId,
+          driverId: rec.driverId,
+          reason: `${drv.name} on ${rec.type} leave`,
+          createdAt: nowOf(d),
+        });
+      }
       if (entry.shift !== "Leave") {
         entry.shift = "Leave";
         entry.primeMoverId = null;
         entry.attendance = "Scheduled";
         entry.recordedBy = undefined;
+        entry.coveredBy = undefined;
+        entry.coveringFor = undefined;
       }
       touched += 1;
     }
@@ -237,4 +268,63 @@ export function decideLeave(d: DB, leaveId: string, decision: "Approved" | "Reje
     description: `${decision} ${rec.type} leave for ${drv.name} (${drv.id}), ${formatDate(rec.from)} to ${formatDate(rec.to)}.${decision === "Approved" ? ` ${touched} roster day(s) set to Leave.` : ""}`,
   });
   return rec;
+}
+
+/* ───────────────────────── replacing a driver ───────────────────────── */
+
+export interface ReplaceInput {
+  date: string;
+  shift: WorkShift;
+  toDriverId: string;
+  primeMoverId: string | null;
+  /** Driver who is absent (shift stays on their row, marked Absent) */
+  fromDriverId?: string;
+  /** Open shift (from approved leave) this assignment fills */
+  openShiftId?: string;
+}
+
+/** Assign an available driver to a shift whose driver is absent or on leave. The roster updates immediately. */
+export function replaceDriver(d: DB, input: ReplaceInput): RosterEntry {
+  const to = findDriver(d, input.toDriverId);
+  const available = availableDrivers(d, input.date, input.shift, input.fromDriverId).some((a) => a.driver.id === to.id);
+  if (!available) throw new Error(`${to.name} is not available for the ${input.shift} shift on ${formatDate(input.date)}.`);
+  const actor = actorOf(d);
+  const truck = input.primeMoverId ?? freeTruck(d, input.date, input.shift, to.id);
+
+  const entry = ensureRosterEntry(d, to.id, input.date);
+  entry.shift = input.shift;
+  entry.primeMoverId = truck;
+  entry.attendance = "Scheduled";
+  entry.recordedBy = undefined;
+  entry.coveringFor = input.fromDriverId;
+  entry.coveredBy = undefined;
+
+  let fromName = "";
+  if (input.fromDriverId) {
+    const from = findDriver(d, input.fromDriverId);
+    fromName = from.name;
+    const fromEntry = d.roster.find((r) => r.driverId === from.id && r.date === input.date);
+    if (fromEntry) {
+      fromEntry.attendance = "Absent";
+      fromEntry.primeMoverId = null;
+      fromEntry.coveredBy = to.id;
+      fromEntry.recordedBy = actor.name;
+    }
+  }
+  if (input.openShiftId) d.openShifts = d.openShifts.filter((o) => o.id !== input.openShiftId);
+
+  const range = SHIFT_HOURS[input.shift].range;
+  logAudit(d, {
+    action: "Shift Reassigned",
+    module: "Roster",
+    entityId: entry.id,
+    description: `${to.name} (${to.id}) assigned to the ${input.shift} shift (${range}) on ${formatDate(input.date)}${truck ? ` on ${truck}` : ""}${fromName ? ` replacing ${fromName}` : ""}.`,
+  });
+  notify(d, {
+    title: "Shift reassigned",
+    body: `${to.name} now covers ${input.shift} (${range}) on ${formatDate(input.date)}${fromName ? ` for ${fromName}` : ""}.`,
+    level: "info",
+    href: "/drivers/roster",
+  });
+  return entry;
 }

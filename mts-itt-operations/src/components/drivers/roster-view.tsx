@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, Info, Moon, Sun, UserRoundCheck, UserRoundX } from "lucide-react";
+import { CalendarCheck, Check, ChevronLeft, ChevronRight, Info, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
 import { StatCard } from "@/components/shared/stat-card";
@@ -16,6 +16,8 @@ import type { Driver, RosterEntry } from "@/types/driver";
 import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calendar";
 import { AttendanceDialog } from "./attendance-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
+import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
+import { SHIFT_HOURS, checkRosterRules } from "@/lib/roster-rules";
 
 export function RosterView() {
   const { db } = useApp();
@@ -28,6 +30,7 @@ export function RosterView() {
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [assign, setAssign] = useState<AssignTarget | null>(null);
 
   const canEdit = can("roster.edit");
   const canAttend = can("roster.attendance");
@@ -58,11 +61,15 @@ export function RosterView() {
 
   const todayRows = db.roster.filter((r) => r.date === today && isWorkingShift(r.shift));
   const morningToday = todayRows.filter((r) => r.shift === "Morning" && r.attendance !== "Absent").length;
+  const afternoonToday = todayRows.filter((r) => r.shift === "Afternoon" && r.attendance !== "Absent").length;
   const nightToday = todayRows.filter((r) => r.shift === "Night" && r.attendance !== "Absent").length;
   const absentToday = todayRows.filter((r) => r.attendance === "Absent").length;
   const pendingLeave = db.leaves.filter((l) => l.status === "Pending").length;
   const activeDrivers = db.drivers.filter((d) => d.status === "Active").length;
   const activePms = db.primeMovers.filter((p) => p.status === "Active").length;
+
+  const ruleChecks = useMemo(() => checkRosterRules(drivers, db.roster, start, end), [drivers, db.roster, start, end]);
+  const openShifts = [...db.openShifts].sort((a, b) => (a.date < b.date ? -1 : 1));
 
   const own = isDriver && driverId ? db.drivers.find((d) => d.id === driverId) : null;
 
@@ -73,7 +80,7 @@ export function RosterView() {
         description={
           isDriver
             ? `Your shifts and prime-mover assignments${own ? ` (${own.name})` : ""}.`
-            : "Shift calendar with a selectable date range and morning / night coverage for continuous 24-hour operation."
+            : "Shift calendar with a selectable date range and morning, afternoon and night cover for continuous 24-hour operation."
         }
         actions={
           <>
@@ -89,9 +96,10 @@ export function RosterView() {
 
       {!isDriver && (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Morning shift today" value={morningToday} icon={Sun} tone="orange" hint="Drivers excl. absent" />
-            <StatCard label="Night shift today" value={nightToday} icon={Moon} tone="navy" hint="Drivers excl. absent" />
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <StatCard label="Morning shift today" value={morningToday} icon={Sun} tone="orange" hint={`${SHIFT_HOURS.Morning.range} · excl. absent`} />
+            <StatCard label="Afternoon shift today" value={afternoonToday} icon={Sunset} tone="orange" hint={`${SHIFT_HOURS.Afternoon.range} · excl. absent`} />
+            <StatCard label="Night shift today" value={nightToday} icon={Moon} tone="navy" hint={`${SHIFT_HOURS.Night.range} · excl. absent`} />
             <StatCard label="Absent today" value={absentToday} icon={UserRoundX} tone={absentToday ? "red" : "grey"} />
             <StatCard label="Pending leave requests" value={pendingLeave} icon={UserRoundCheck} tone={pendingLeave ? "orange" : "grey"} />
           </div>
@@ -103,12 +111,40 @@ export function RosterView() {
               <p className="text-xs leading-relaxed">
                 The proposal mentions 9 prime movers, 14 drivers and &quot;3 drivers per truck&quot;, but these are unconfirmed and are <strong>not enforced</strong> here. Assignments are fully editable and the
                 configurable value is set in Settings (drivers per truck:{" "}
-                <strong>{db.settings.driversPerTruck ?? "not set"}</strong>). Currently registered: {activeDrivers} active drivers, {activePms} active prime movers. Operation is continuous (24h), so cover is shown per
-                Morning and Night shift; shift hours are a demo assumption.
+                <strong>{db.settings.driversPerTruck ?? "not set"}</strong>). Currently registered: {activeDrivers} active drivers, {activePms} active prime movers. Shift hours and roster rules below are demo defaults (to be confirmed with MTS).
               </p>
             </div>
           </div>
         </>
+      )}
+
+      <div className="mb-4 rounded-xl border bg-card p-3 shadow-sm">
+        <div className="mb-2 text-xs font-medium text-ink">How the 24 hours are covered (one operational day, 7 AM → 7 AM) · three 8-hour shifts</div>
+        <div className="flex overflow-hidden rounded-lg text-xs font-medium">
+          <div className="flex flex-1 items-center justify-center gap-1.5 bg-sky-100 py-2 text-sky-900"><Sun className="size-3.5" /> Morning · {SHIFT_HOURS.Morning.range}</div>
+          <div className="flex flex-1 items-center justify-center gap-1.5 bg-orange-100 py-2 text-orange-900"><Sunset className="size-3.5" /> Afternoon · {SHIFT_HOURS.Afternoon.range}</div>
+          <div className="flex flex-1 items-center justify-center gap-1.5 bg-slate-800 py-2 text-white"><Moon className="size-3.5" /> Night · {SHIFT_HOURS.Night.range}</div>
+        </div>
+        <div className="mt-1 flex justify-between text-[10px] text-slate"><span>7 AM</span><span>3 PM</span><span>11 PM</span><span>7 AM</span></div>
+        <p className="mt-1 text-[11px] text-slate">A driver works one 8-hour shift a day, rests at least 8 hours between shifts, and has at least one day off every week. A night shift that starts on Monday finishes on Tuesday morning and counts as Monday.</p>
+      </div>
+
+      {!isDriver && canEdit && openShifts.length > 0 && (
+        <SectionCard title={`Open shifts (${openShifts.length})`} description="Shifts that lost their driver because of approved leave. Pick a free driver for each." bodyClassName="p-0" className="mb-4 border-amber-300">
+          <ul className="divide-y">
+            {openShifts.map((o) => (
+              <li key={o.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-ink">{formatDay(o.date, "EEE dd MMM")} · {o.shift} ({SHIFT_HOURS[o.shift].range})</div>
+                  <div className="text-xs text-slate">{o.primeMoverId ?? "No truck"} · {o.reason}</div>
+                </div>
+                <Button size="sm" onClick={() => setAssign({ date: o.date, shift: o.shift, primeMoverId: o.primeMoverId, openShiftId: o.id, reason: o.reason })}>
+                  <UserCheck /> Assign driver
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
       )}
 
       <SectionCard
@@ -124,7 +160,7 @@ export function RosterView() {
             {!isDriver && (
               <>
                 <SearchInput value={q} onChange={setQ} placeholder="Find driver…" className="hidden w-40 sm:block" />
-                <NativeSelect className="hidden w-32 sm:block" value={shiftFilter} onValueChange={setShiftFilter} placeholder="All shifts" options={["Morning", "Night", "Rotating"]} aria-label="Default shift filter" />
+                <NativeSelect className="hidden w-32 sm:block" value={shiftFilter} onValueChange={setShiftFilter} placeholder="All shifts" options={["Morning", "Afternoon", "Night", "Rotating"]} aria-label="Default shift filter" />
               </>
             )}
             <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => shift(-1)}>
@@ -164,7 +200,8 @@ export function RosterView() {
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
           <span className="font-medium text-ink">Legend</span>
-          <span>Morning / Night / Off / Leave</span>
+          <span>Morning / Afternoon / Night / Off / Leave</span>
+          <span>&ldquo;→ DR-xxx&rdquo; = covered by another driver</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Present</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Late</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-red-500" />Absent</span>
@@ -172,11 +209,28 @@ export function RosterView() {
         </div>
       </SectionCard>
 
+      {!isDriver && (
+        <SectionCard title="Roster rules check" description={`Checked for ${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM")} and the drivers shown above.`} className="mt-4">
+          <ul className="space-y-1.5">
+            {ruleChecks.map((c) => (
+              <li key={c.key} className="flex items-start gap-2 text-sm">
+                <span className={c.passed ? "mt-0.5 text-success" : "mt-0.5 text-danger"}>{c.passed ? <Check className="size-4" /> : <X className="size-4" />}</span>
+                <div className="min-w-0">
+                  <span className="text-ink">{c.label}</span> <span className="text-xs text-slate">· {c.detail}</span>
+                  {c.problems.length > 0 && <div className="text-xs text-danger">{c.problems.slice(0, 4).join(" · ")}{c.problems.length > 4 ? ` · +${c.problems.length - 4} more` : ""}</div>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
+
       <div className="mt-4">
         <LeavePanel driverId={isDriver ? driverId : undefined} onRequest={() => setLeaveOpen(true)} />
       </div>
 
       {cell && <RosterCellDialog driver={cell.driver} date={cell.date} entry={db.roster.find((r) => r.driverId === cell.driver.id && r.date === cell.date)} onClose={() => setCell(null)} />}
+      {assign && <AssignDriverDialog target={assign} onClose={() => setAssign(null)} />}
       {attendanceOpen && <AttendanceDialog open onOpenChange={setAttendanceOpen} />}
       {leaveOpen && <LeaveRequestDialog open onOpenChange={setLeaveOpen} fixedDriverId={isDriver ? driverId : undefined} />}
     </div>

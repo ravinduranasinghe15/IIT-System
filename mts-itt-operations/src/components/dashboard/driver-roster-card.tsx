@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useApp } from "@/contexts/app-context";
 import { addDays, realToday, formatDay } from "@/lib/date-utils";
+import { SHIFT_HOURS, isWorkShift } from "@/lib/roster-rules";
 
 /** Driver dashboard: own upcoming roster only. */
 export function DriverRosterCard({ driverId }: { driverId: string }) {
@@ -34,7 +35,7 @@ export function DriverRosterCard({ driverId }: { driverId: string }) {
             <li key={r.id} className="flex items-center justify-between px-4 py-2 text-sm">
               <span className="text-ink">{formatDay(r.date)}</span>
               <span className="flex items-center gap-2">
-                <span className="text-xs text-slate">{r.primeMoverId ?? "—"}</span>
+                <span className="text-xs text-slate">{isWorkShift(r.shift) ? `${SHIFT_HOURS[r.shift].range} · ` : ""}{r.primeMoverId ?? "—"}</span>
                 <StatusBadge status={r.shift} />
               </span>
             </li>

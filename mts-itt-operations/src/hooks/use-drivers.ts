@@ -8,6 +8,7 @@ import {
   assignPrimeMover,
   decideLeave,
   recordAttendance,
+  replaceDriver,
   registerDriver,
   requestLeave,
   setDriverStatus,
@@ -15,6 +16,7 @@ import {
   updateRosterCell,
   type DriverInput,
   type LeaveInput,
+  type ReplaceInput,
   type RosterPatch,
 } from "@/lib/mutations/driver";
 
@@ -52,6 +54,8 @@ export function useDriverActions() {
   const { update } = useApp();
   return useMemo(
     () => ({
+      replace: (input: ReplaceInput) =>
+        run(() => update((d) => replaceDriver(d, input)), () => ({ title: "Driver assigned", description: "The roster has been updated." })),
       register: (input: DriverInput) => run(() => update((d) => registerDriver(d, input)), (r) => ({ title: "Driver registered", description: `${r.name} (${r.id})` })),
       edit: (id: string, input: DriverInput) => run(() => update((d) => updateDriver(d, id, input)), (r) => `Saved changes to ${r.name}`),
       assignPrimeMover: (driverId: string, pmId: string | null) =>

@@ -57,6 +57,7 @@ const MAP: Record<string, Tone> = {
   "Due Soon": "orange",
   Disabled: "grey",
   Morning: "blue",
+  Afternoon: "orange",
   Night: "navy",
   Rotating: "purple",
   Off: "grey",

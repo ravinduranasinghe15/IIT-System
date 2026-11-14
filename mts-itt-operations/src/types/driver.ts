@@ -1,5 +1,5 @@
 export type DriverStatus = "Active" | "On Leave" | "Suspended" | "Inactive";
-export type ShiftType = "Morning" | "Night" | "Rotating";
+export type ShiftType = "Morning" | "Afternoon" | "Night" | "Rotating";
 
 export interface Driver {
   id: string;
@@ -15,7 +15,7 @@ export interface Driver {
   emergencyContact: string;
 }
 
-export type RosterShift = "Morning" | "Night" | "Off" | "Leave";
+export type RosterShift = "Morning" | "Afternoon" | "Night" | "Off" | "Leave";
 export type AttendanceStatus = "Scheduled" | "Present" | "Absent" | "Late";
 
 export interface RosterEntry {
@@ -27,6 +27,22 @@ export interface RosterEntry {
   primeMoverId: string | null;
   attendance: AttendanceStatus;
   recordedBy?: string;
+  /** Absent driver: the driver who took over this shift */
+  coveredBy?: string;
+  /** Replacement driver: the absent driver whose shift this is */
+  coveringFor?: string;
+}
+
+/** A rostered shift that lost its driver (approved leave) and still needs someone assigned. */
+export interface OpenShift {
+  id: string;
+  date: string;
+  shift: "Morning" | "Afternoon" | "Night";
+  primeMoverId: string | null;
+  /** Driver who was rostered and is now away */
+  driverId: string;
+  reason: string;
+  createdAt: string;
 }
 
 export interface LeaveRecord {

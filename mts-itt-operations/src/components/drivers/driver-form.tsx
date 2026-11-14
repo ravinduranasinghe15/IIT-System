@@ -21,7 +21,7 @@ export const driverSchema = z.object({
   licenseNo: z.string().trim().min(5, "Enter the driving licence number").max(20),
   licenseExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the licence expiry date"),
   status: z.enum(["Active", "On Leave", "Suspended", "Inactive"]),
-  shift: z.enum(["Morning", "Night", "Rotating"]),
+  shift: z.enum(["Morning", "Afternoon", "Night", "Rotating"]),
   joinedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the joining date"),
   address: z.string().trim().min(5, "Enter the residential address").max(160),
   emergencyContact: z.string().trim().regex(phoneRe, "Enter a valid emergency contact number"),
@@ -102,7 +102,7 @@ export function DriverForm({
           <Controller control={control} name="status" render={({ field }) => <NativeSelect value={field.value} onValueChange={field.onChange} options={["Active", "On Leave", "Suspended", "Inactive"]} />} />
         </Field>
         <Field label="Shift" required error={errors.shift?.message} hint="Default shift; the roster holds the actual daily assignment.">
-          <Controller control={control} name="shift" render={({ field }) => <NativeSelect value={field.value} onValueChange={field.onChange} options={["Morning", "Night", "Rotating"]} />} />
+          <Controller control={control} name="shift" render={({ field }) => <NativeSelect value={field.value} onValueChange={field.onChange} options={["Morning", "Afternoon", "Night", "Rotating"]} />} />
         </Field>
         <Field label="Joined on" required error={errors.joinedAt?.message}>
           <Input type="date" {...register("joinedAt")} aria-invalid={!!errors.joinedAt} />

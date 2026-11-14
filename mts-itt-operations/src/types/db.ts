@@ -3,7 +3,7 @@ import type { ContainerType, RouteRecord, Terminal } from "./terminal";
 import type { Movement } from "./movement";
 import type { ExceptionRecord } from "./exception";
 import type { ColumnMapping, ImportRecord } from "./import";
-import type { Driver, LeaveRecord, RosterEntry } from "./driver";
+import type { Driver, LeaveRecord, OpenShift, RosterEntry } from "./driver";
 import type { PrimeMover, ServiceRecord, Trailer } from "./vehicle";
 import type { FuelRecord, FuelReview, GpsImport } from "./fuel";
 import type { EvidenceDoc } from "./evidence";
@@ -45,6 +45,7 @@ export interface DB {
   drivers: Driver[];
   roster: RosterEntry[];
   leaves: LeaveRecord[];
+  openShifts: OpenShift[];
   movements: Movement[];
   exceptions: ExceptionRecord[];
   imports: ImportRecord[];

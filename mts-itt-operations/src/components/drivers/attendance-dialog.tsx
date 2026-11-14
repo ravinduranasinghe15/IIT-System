@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { useApp } from "@/contexts/app-context";
 import { useDriverActions } from "@/hooks/use-drivers";
 import { realToday, formatDay } from "@/lib/date-utils";
+import { SHIFT_HOURS, type WorkShift } from "@/lib/roster-rules";
+import { useAuth } from "@/contexts/auth-context";
+import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types/driver";
 
@@ -23,18 +26,21 @@ const OPTIONS: { value: AttendanceStatus; className: string }[] = [
 export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: boolean; onOpenChange: (o: boolean) => void; initialDate?: string }) {
   const { db } = useApp();
   const actions = useDriverActions();
+  const { can } = useAuth();
+  const [assign, setAssign] = useState<AssignTarget | null>(null);
   const [date, setDate] = useState(initialDate ?? realToday());
 
   const rows = useMemo(
     () =>
       db.roster
-        .filter((r) => r.date === date && (r.shift === "Morning" || r.shift === "Night"))
+        .filter((r) => r.date === date && (r.shift === "Morning" || r.shift === "Afternoon" || r.shift === "Night"))
         .sort((a, b) => a.shift.localeCompare(b.shift) || a.driverId.localeCompare(b.driverId)),
     [db.roster, date],
   );
   const future = date > realToday();
 
   return (
+    <>
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
@@ -51,7 +57,7 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
       </div>
       {future && <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">This date is in the future – attendance is normally recorded on or after the shift day.</p>}
       {rows.length === 0 ? (
-        <EmptyState title="No rostered drivers" description="No Morning or Night shifts are rostered on this date." />
+        <EmptyState title="No rostered drivers" description="No shifts are rostered on this date." />
       ) : (
         <div className="divide-y rounded-lg border">
           {rows.map((r) => {
@@ -61,7 +67,7 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-ink">{drv?.name ?? r.driverId}</div>
                   <div className="text-xs text-slate">
-                    {r.driverId} · {r.primeMoverId ?? "no prime mover"}
+                    {r.driverId} · {r.primeMoverId ?? "no prime mover"} · {SHIFT_HOURS[r.shift as WorkShift].range}
                   </div>
                 </div>
                 <StatusBadge status={r.shift} />
@@ -78,12 +84,22 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
                     </button>
                   ))}
                 </div>
-                <span className="w-16 text-right text-xs text-slate">{r.attendance === "Scheduled" ? "Not recorded" : ""}</span>
+                {r.attendance === "Absent" && can("roster.edit") && !r.coveredBy ? (
+                  <Button size="xs" variant="outline" onClick={() => setAssign({ date, shift: r.shift as WorkShift, primeMoverId: r.primeMoverId, fromDriverId: r.driverId })}>
+                    Find replacement
+                  </Button>
+                ) : r.coveredBy ? (
+                  <span className="text-xs text-emerald-700">Covered by {db.drivers.find((x) => x.id === r.coveredBy)?.name ?? r.coveredBy}</span>
+                ) : (
+                  <span className="w-16 text-right text-xs text-slate">{r.attendance === "Scheduled" ? "Not recorded" : ""}</span>
+                )}
               </div>
             );
           })}
         </div>
       )}
     </FormDialog>
+      {assign && <AssignDriverDialog target={assign} onClose={() => setAssign(null)} />}
+    </>
   );
 }
