@@ -3,6 +3,8 @@ import type { DocType, EvidenceDoc, OcrField } from "@/types/evidence";
 import { actorOf, logAudit, nextId, nowOf } from "../db-helpers";
 import { ledgerValueFor, sameValue, simulateExtraction } from "../ocr-sim";
 import { makeEvent } from "./movement";
+import { DEMO_CHIT_DIR, demoChitByName, type DemoChit } from "@/data/demo-chits";
+import { PRIORITY_BY_TYPE, raiseExceptions } from "../reconciliation";
 
 /** Stored as a data URL only below this size – larger files keep metadata only (browser storage limits). */
 export const MAX_DATA_URL_KB = 600;
@@ -98,7 +100,12 @@ export function runExtraction(db: DB, docId: string): EvidenceDoc | null {
   if (!doc) return null;
   const actor = actorOf(db);
   const now = nowOf(db);
-  const { fields, sourceMovement, inferred } = simulateExtraction(doc, db);
+  // The prepared demo chit pack has fixed, hard-coded extraction values; anything else uses the simulation.
+  const demo = demoChitByName(doc.name);
+  const sim = demo ? null : simulateExtraction(doc, db);
+  const fields = demo ? demo.fields.map((f) => ({ ...f })) : sim!.fields;
+  const sourceMovement = sim?.sourceMovement ?? null;
+  const inferred = sim?.inferred ?? false;
   const rerun = !!doc.ocr;
   doc.ocr = { fields, extractedAt: now, verified: false };
   doc.history.push({
@@ -140,6 +147,23 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { o
     by: actor.name,
     action: `Extraction verified by human${corrected.length ? ` (${corrected.length} field(s) corrected: ${corrected.map((c) => c.label).join(", ")})` : " (no corrections)"}`,
   });
+  const containerClash = differences.find((x) => x.startsWith("Container Number"));
+  if (m && containerClash) {
+    const f = fields.find((x) => x.key === "containerNo");
+    raiseExceptions(
+      db,
+      m,
+      [
+        {
+          type: "Container Number Mismatch",
+          priority: PRIORITY_BY_TYPE["Container Number Mismatch"],
+          description: `Verified ${doc.docType} ${doc.id} shows container ${f?.value} but the ledger (terminal report) has ${m.containerNos.join(" / ")}. Billing is blocked until the correct container is confirmed.`,
+          conflicts: [{ field: "Container number", systemValue: m.containerNos.join(" / "), sourceValue: f?.value ?? "" }],
+        },
+      ],
+      actor,
+    );
+  }
   if (m && differences.length) {
     m.events.push(makeEvent(db, "document", `Verified ${doc.docType} ${doc.id} differs from the ledger – ${differences.join("; ")}. Review in the exception queue if needed.`));
   }
@@ -150,4 +174,24 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { o
     entityId: doc.id,
   });
   return { ok: true, corrected: corrected.length, differences };
+}
+
+export interface SubmitChitResult {
+  doc: EvidenceDoc;
+  movementId: string | null;
+}
+
+/** Demo chit submission: find the movement by container, store the chit linked to it and run the fixed extraction. */
+export function submitDemoChit(db: DB, chit: DemoChit, dataUrl?: string): SubmitChitResult {
+  const movement = db.movements.find((m) => m.containerNos.includes(chit.linkContainer)) ?? null;
+  const { doc } = uploadDocument(db, {
+    name: chit.fileName,
+    docType: chit.docType,
+    mime: "image/png",
+    sizeKb: 40,
+    dataUrl: dataUrl ?? `${DEMO_CHIT_DIR}${chit.fileName}`,
+    movementId: movement?.id ?? null,
+  });
+  runExtraction(db, doc.id);
+  return { doc, movementId: movement?.id ?? null };
 }

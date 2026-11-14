@@ -86,7 +86,7 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
         <span className="ml-auto">Confidence threshold: {threshold}% (Settings)</span>
       </div>
 
-      <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-slate">
             <tr>
@@ -114,7 +114,7 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
                         value={f.value}
                         readOnly={readOnly}
                         onChange={(e) => update1(f.key, e.target.value)}
-                        className={cn("h-8 font-mono text-xs", readOnly && "border-transparent bg-transparent px-0 shadow-none")}
+                        className={cn("h-8 max-w-44 font-mono text-xs", readOnly && "border-transparent bg-transparent px-0 shadow-none")}
                       />
                     )}
                   </td>
