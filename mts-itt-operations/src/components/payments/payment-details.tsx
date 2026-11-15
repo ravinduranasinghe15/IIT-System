@@ -195,9 +195,14 @@ export function PayRunDetail() {
           <Lock className="size-4" /> Approved by {run.approvedBy} on {formatDateTime(run.approvedAt)}. This pay run is immutable (simulated approval – no payment is made).
         </div>
       )}
+      {draft && submitted && !can("payments.approve") && (
+        <div className="mb-4 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          Submitted – waiting for Administrator approval. You will see it approved here once the Administrator has reviewed it.
+        </div>
+      )}
       {draft && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-amber-700">
-          Live draft – this pay run updates automatically as movements, exceptions and drivers change. Only an authorised Finance Manager or Administrator can approve. Any change after submission requires re-submission.
+          Live draft – this pay run updates automatically as movements, exceptions and drivers change. Finance Managers submit it; only an Administrator can approve. Any change after submission requires re-submission.
         </div>
       )}
 

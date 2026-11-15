@@ -8,10 +8,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useApp } from "@/contexts/app-context";
+import { ROLES, type Role } from "@/types/user";
+import { NativeSelect } from "@/components/shared/native-select";
 import { initials } from "@/lib/utils";
 
 export function UserMenu() {
-  const { user, role, can } = useAuth();
+  const { user, role, can, setRole } = useAuth();
   const { reset } = useApp();
   const router = useRouter();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -37,6 +39,11 @@ export function UserMenu() {
             <div className="mt-1 text-[11px] text-slate">Demo role: {role}</div>
           </div>
           <DropdownMenuSeparator />
+          <div className="px-2 py-1.5 sm:hidden">
+            <div className="mb-1 text-[11px] text-slate">Switch demo role</div>
+            <NativeSelect value={role} onValueChange={(v) => setRole(v as Role)} options={[...ROLES]} aria-label="Switch demo role (menu)" />
+          </div>
+          <DropdownMenuSeparator className="sm:hidden" />
           {can("settings.manage") && (
             <>
               <DropdownMenuItem onClick={() => router.push("/settings")}>

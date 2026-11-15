@@ -2,16 +2,21 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, Plus } from "lucide-react";
+import { ChevronRight, Download, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { SectionCard } from "@/components/shared/section-card";
+import { SearchInput } from "@/components/shared/search-input";
+import { NativeSelect } from "@/components/shared/native-select";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { EmptyState } from "@/components/shared/empty-state";
 import { useAuth } from "@/contexts/auth-context";
 import { useLookups } from "@/hooks/use-lookups";
 import { EMPTY_FILTERS, filterRows, useMovements, type MovementFilters } from "@/hooks/use-movements";
 import { downloadCsv } from "@/lib/export-utils";
-import { formatDateTime } from "@/lib/date-utils";
+import { formatDate, formatDateTime, formatTime } from "@/lib/date-utils";
+import { MOVEMENT_STATUSES } from "@/types/movement";
 import { containerCount } from "@/lib/stats";
 import type { Movement } from "@/types/movement";
 import { MovementFiltersBar } from "./movement-filters";
@@ -86,6 +91,44 @@ export function MovementsView() {
         <StatCard label="Completed" value={stats.completed} tone="green" />
         <StatCard label="Needs Attention" value={stats.attention} hint="Rejected, damaged, under review" tone="red" />
       </div>
+      {isDriver ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <SearchInput value={filters.search} onChange={(v) => setFilters({ ...filters, search: v })} placeholder="Search…" className="col-span-2" />
+            <NativeSelect className="col-span-2" value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })} placeholder="All statuses" options={MOVEMENT_STATUSES} aria-label="Status" />
+          </div>
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border bg-card py-4">
+              <EmptyState title="No movements" description="No journeys match. Clear the search or status filter." />
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {filtered.map(({ movement: m }) => (
+                <li key={m.id}>
+                  <Link href={`/movements/${m.id}`} className="block rounded-xl border bg-card p-3 shadow-sm active:bg-muted/50">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-brand">{m.id}</span>
+                      <span className="flex items-center gap-1">
+                        <StatusBadge status={m.status} />
+                        <ChevronRight className="size-4 text-slate" />
+                      </span>
+                    </div>
+                    <div className="mt-1 font-mono text-xs text-ink">{m.containerNos.join(" + ")}</div>
+                    <div className="mt-1 text-sm text-ink">
+                      {m.sourceTerminal} → {m.destinationTerminal} · {m.containerSize.replace("FT", " ft")}
+                    </div>
+                    <div className="mt-1 text-xs text-slate">
+                      {lk.pmReg(m.primeMoverId)} · {formatDate(m.loadingAt ?? m.dischargeAt)}
+                      {m.loadingAt && ` · Loaded ${formatTime(m.loadingAt)}`}
+                      {m.dischargeAt && ` · Discharged ${formatTime(m.dischargeAt)}`}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : (
       <SectionCard bodyClassName="p-0">
         <MovementFiltersBar filters={filters} onChange={setFilters} />
         <MovementTable
@@ -100,6 +143,7 @@ export function MovementsView() {
           }
         />
       </SectionCard>
+      )}
       <MovementEditDialog movement={editing} onOpenChange={(o) => !o && setEditing(null)} />
     </div>
   );
