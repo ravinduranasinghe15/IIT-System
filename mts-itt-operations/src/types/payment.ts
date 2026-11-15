@@ -14,12 +14,15 @@ export interface PayLine {
   adjustmentNote: string;
   total: number;
   excluded: { movementId: string; reason: string }[];
+  /** Completed movements held back (e.g. by an exception) that become payable once cleared */
+  pendingUnits?: number;
+  pendingAmount?: number;
 }
 
 export interface PayApprovalEvent {
   at: string;
   by: string;
-  action: "Draft generated" | "Draft regenerated" | "Adjustment added" | "Submitted" | "Approved" | "Reopened";
+  action: "Draft generated" | "Auto-updated" | "Draft regenerated" | "Adjustment added" | "Submitted" | "Approved" | "Reopened";
   note: string;
 }
 

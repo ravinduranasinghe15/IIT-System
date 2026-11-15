@@ -37,6 +37,8 @@ export function computePayLines(
         adjustmentNote: "",
         total: 0,
         excluded: [],
+        pendingUnits: 0,
+        pendingAmount: 0,
       };
       byDriver.set(key, line);
     }
@@ -44,6 +46,11 @@ export function computePayLines(
     const el = payEligibility(m, db);
     if (!el.eligible) {
       line.excluded.push({ movementId: m.id, reason: el.reason ?? "Not eligible" });
+      if (m.status === "Completed" && m.driverId) {
+        const u = unitsFor(m, payUnitMode);
+        line.pendingUnits = (line.pendingUnits ?? 0) + u;
+        line.pendingAmount = (line.pendingAmount ?? 0) + u * payRates[m.containerSize];
+      }
       continue;
     }
     const units = unitsFor(m, payUnitMode);
@@ -58,6 +65,7 @@ export function computePayLines(
     l.adjustments = prev?.adjustments ?? 0;
     l.adjustmentNote = prev?.adjustmentNote ?? "";
     l.baseAmount = round2(l.baseAmount);
+    l.pendingAmount = round2(l.pendingAmount ?? 0);
     l.rate = l.payableUnits ? round2(l.baseAmount / l.payableUnits) : 0;
     l.total = round2(l.baseAmount + l.adjustments);
   }

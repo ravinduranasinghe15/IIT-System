@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Sunset, UserCheck } from "lucide-react";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field } from "@/components/shared/field";
 import { NativeSelect } from "@/components/shared/native-select";
@@ -11,20 +11,23 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useDriverActions } from "@/hooks/use-drivers";
 import { rosterConflicts } from "@/lib/mutations/driver";
-import { demoToday, eachDay, addDays, formatDay, formatDate } from "@/lib/date-utils";
+import { SHIFT_HOURS, WORK_SHIFTS, isWorkShift, type WorkShift } from "@/lib/roster-rules";
+import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
+import { realToday, eachDay, addDays, formatDay, formatDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus, Driver, RosterEntry, RosterShift } from "@/types/driver";
 
 const SHIFT_STYLE: Record<RosterShift, string> = {
   Morning: "bg-sky-50 text-sky-800 ring-sky-600/20",
+  Afternoon: "bg-orange-50 text-orange-800 ring-orange-600/20",
   Night: "bg-slate-800 text-white ring-slate-900/30",
   Off: "bg-slate-50 text-slate-400 ring-slate-300/50",
   Leave: "bg-amber-50 text-amber-800 ring-amber-600/20",
 };
-const SHIFT_LABEL: Record<RosterShift, string> = { Morning: "Morning", Night: "Night", Off: "Off", Leave: "Leave" };
+const SHIFT_LABEL: Record<RosterShift, string> = { Morning: "Morning", Afternoon: "Afternoon", Night: "Night", Off: "Off", Leave: "Leave" };
 const ATT_DOT: Record<AttendanceStatus, string> = { Present: "bg-emerald-500", Late: "bg-amber-500", Absent: "bg-red-500", Scheduled: "bg-transparent" };
 
-export const isWorkingShift = (s: RosterShift) => s === "Morning" || s === "Night";
+export const isWorkingShift = (s: RosterShift) => isWorkShift(s);
 
 export function RosterCalendar({
   start,
@@ -41,7 +44,7 @@ export function RosterCalendar({
   showCoverage?: boolean;
   onCellClick?: (driver: Driver, date: string, entry: RosterEntry | undefined) => void;
 }) {
-  const today = demoToday();
+  const today = realToday();
   const dates = useMemo(() => eachDay(start, addDays(start, days - 1)), [start, days]);
   const cell = useMemo(() => new Map(roster.map((r) => [`${r.driverId}|${r.date}`, r])), [roster]);
   const conflicts = useMemo(() => rosterConflicts(roster), [roster]);
@@ -55,7 +58,7 @@ export function RosterCalendar({
           const absent = list.filter((r) => r.attendance === "Absent").length;
           return { drivers: list.length - absent, absent, movers: new Set(list.filter((r) => r.attendance !== "Absent" && r.primeMoverId).map((r) => r.primeMoverId)).size };
         };
-        return { date, morning: of("Morning"), night: of("Night") };
+        return { date, Morning: of("Morning"), Afternoon: of("Afternoon"), Night: of("Night") };
       }),
     [dates, roster],
   );
@@ -67,19 +70,20 @@ export function RosterCalendar({
           <tr>
             <th className="sticky left-0 z-20 min-w-44 border-b bg-muted px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate">Driver</th>
             {dates.map((date) => (
-              <th key={date} className={cn("min-w-[4.5rem] border-b bg-muted px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate", date === today && "bg-brand/10 text-brand")}>
+              <th key={date} className={cn("min-w-[5rem] border-b bg-muted px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate", date === today && "bg-brand/10 text-brand")}>
                 <div>{formatDay(date, "EEE")}</div>
                 <div className="text-xs normal-case tracking-normal">{formatDay(date, "dd MMM")}</div>
               </th>
             ))}
           </tr>
           {showCoverage &&
-            (["morning", "night"] as const).map((k) => (
+            WORK_SHIFTS.map((k) => (
               <tr key={k}>
                 <th className="sticky left-0 z-20 border-b bg-card px-3 py-1.5 text-left text-xs font-medium text-ink">
                   <span className="inline-flex items-center gap-1.5">
-                    {k === "morning" ? <Sun className="size-3.5 text-amber-500" /> : <Moon className="size-3.5 text-navy" />}
-                    {k === "morning" ? "Morning cover" : "Night cover"}
+                    {k === "Morning" ? <Sun className="size-3.5 text-amber-500" /> : k === "Afternoon" ? <Sunset className="size-3.5 text-orange-500" /> : <Moon className="size-3.5 text-navy" />}
+                    {k} cover
+                    <span className="font-normal text-slate">{SHIFT_HOURS[k].short}</span>
                   </span>
                 </th>
                 {coverage.map((c) => {
@@ -115,16 +119,19 @@ export function RosterCalendar({
                       type="button"
                       disabled={!clickable}
                       onClick={() => onCellClick?.(drv, date, e)}
-                      title={clash ? `Prime mover ${e?.primeMoverId} is also rostered for ${clash.join(", ")} on this shift` : e ? `${SHIFT_LABEL[e.shift]}${e.primeMoverId ? ` · ${e.primeMoverId}` : ""} · ${e.attendance}` : "Not rostered"}
+                      title={clash ? `Prime mover ${e?.primeMoverId} is also rostered for ${clash.join(", ")} on this shift` : e ? `${SHIFT_LABEL[e.shift]}${isWorkShift(e.shift) ? ` (${SHIFT_HOURS[e.shift].range})` : ""}${e.primeMoverId ? ` · ${e.primeMoverId}` : ""} · ${e.attendance}` : "Not rostered"}
                       className={cn(
-                        "relative flex h-11 w-full flex-col items-center justify-center rounded-md ring-1 ring-inset transition",
+                        "relative flex h-14 w-full flex-col items-center justify-center rounded-md ring-1 ring-inset transition",
                         e ? SHIFT_STYLE[e.shift] : "bg-transparent text-slate-300 ring-dashed ring-slate-200",
                         clickable && "hover:ring-2 hover:ring-brand",
                         clash && "ring-2 ring-red-500",
                       )}
                     >
                       <span className="text-[11px] font-semibold leading-none">{e ? SHIFT_LABEL[e.shift] : "—"}</span>
-                      {e && isWorkingShift(e.shift) && <span className="mt-0.5 text-[10px] leading-none opacity-80">{e.primeMoverId ?? "no PM"}</span>}
+                      {e && isWorkShift(e.shift) && <span className="mt-0.5 text-[10px] leading-none opacity-90">{SHIFT_HOURS[e.shift].short}</span>}
+                      {e && isWorkingShift(e.shift) && (
+                        <span className="mt-0.5 text-[10px] leading-none opacity-80">{e.coveredBy ? `→ ${e.coveredBy}` : e.coveringFor ? `for ${e.coveringFor}` : (e.primeMoverId ?? "no PM")}</span>
+                      )}
                       {e && isWorkingShift(e.shift) && e.attendance !== "Scheduled" && <span className={cn("absolute right-1 top-1 size-1.5 rounded-full", ATT_DOT[e.attendance])} />}
                     </button>
                   </td>
@@ -157,6 +164,8 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
   const shift = useWatch({ control, name: "shift" });
   const pmId = useWatch({ control, name: "primeMoverId" });
   const working = isWorkingShift(shift);
+  const [assign, setAssign] = useState<AssignTarget | null>(null);
+  const canReplace = canEdit && !!entry && isWorkShift(entry.shift) && !entry.coveredBy;
 
   const sameShiftUsers = useMemo(
     () => db.roster.filter((r) => r.date === date && r.shift === shift && r.primeMoverId === pmId && pmId && r.driverId !== driver.id).map((r) => r.driverId),
@@ -175,8 +184,10 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
   });
 
   return (
+    <>
+    {assign && <AssignDriverDialog target={assign} onClose={() => { setAssign(null); onClose(); }} />}
     <FormDialog
-      open
+      open={!assign}
       onOpenChange={(o) => !o && onClose()}
       title={`${driver.name} – ${formatDate(date)}`}
       description={`${driver.id} · ${formatDay(date, "EEEE")}${entry ? "" : " · no roster entry yet (saving creates one)"}`}
@@ -194,7 +205,7 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
     >
       <form id="roster-cell-form" onSubmit={submit} className="space-y-3">
         <Field label="Shift">
-          <Controller control={control} name="shift" render={({ field }) => <NativeSelect disabled={!canEdit} value={field.value} onValueChange={field.onChange} options={["Morning", "Night", "Off", "Leave"]} />} />
+          <Controller control={control} name="shift" render={({ field }) => <NativeSelect disabled={!canEdit} value={field.value} onValueChange={field.onChange} options={[{ value: "Morning", label: `Morning (${SHIFT_HOURS.Morning.range})` }, { value: "Afternoon", label: `Afternoon (${SHIFT_HOURS.Afternoon.range})` }, { value: "Night", label: `Night (${SHIFT_HOURS.Night.range}, next day)` }, "Off", "Leave"]} />} />
         </Field>
         {working && (
           <>
@@ -223,8 +234,19 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
             </Field>
           </>
         )}
+        {canReplace && entry && isWorkShift(entry.shift) && (
+          <div className="rounded-md border bg-muted/40 p-3">
+            <div className="text-xs text-slate">Driver not coming? Pick another driver who is free for this shift.</div>
+            <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => setAssign({ date, shift: entry.shift as WorkShift, primeMoverId: entry.primeMoverId, fromDriverId: driver.id })}>
+              <UserCheck /> Replace driver
+            </Button>
+          </div>
+        )}
+        {entry?.coveredBy && <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">This shift is covered by {entry.coveredBy}.</p>}
+        {entry?.coveringFor && <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">Covering this shift for {entry.coveringFor}.</p>}
         {!working && shift === "Leave" && <p className="text-xs text-slate">Use Leave management for formal leave requests; this sets only this day.</p>}
       </form>
     </FormDialog>
+    </>
   );
 }

@@ -7,12 +7,13 @@ import { SectionCard } from "@/components/shared/section-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useApp } from "@/contexts/app-context";
-import { addDays, demoToday, formatDay } from "@/lib/date-utils";
+import { addDays, realToday, formatDay } from "@/lib/date-utils";
+import { SHIFT_HOURS, isWorkShift } from "@/lib/roster-rules";
 
 /** Driver dashboard: own upcoming roster only. */
 export function DriverRosterCard({ driverId }: { driverId: string }) {
   const { db } = useApp();
-  const today = demoToday();
+  const today = realToday();
   const to = addDays(today, 6);
   const rows = db.roster.filter((r) => r.driverId === driverId && r.date >= today && r.date <= to).sort((a, b) => (a.date < b.date ? -1 : 1));
   return (
@@ -34,7 +35,7 @@ export function DriverRosterCard({ driverId }: { driverId: string }) {
             <li key={r.id} className="flex items-center justify-between px-4 py-2 text-sm">
               <span className="text-ink">{formatDay(r.date)}</span>
               <span className="flex items-center gap-2">
-                <span className="text-xs text-slate">{r.primeMoverId ?? "—"}</span>
+                <span className="text-xs text-slate">{isWorkShift(r.shift) ? `${SHIFT_HOURS[r.shift].range} · ` : ""}{r.primeMoverId ?? "—"}</span>
                 <StatusBadge status={r.shift} />
               </span>
             </li>

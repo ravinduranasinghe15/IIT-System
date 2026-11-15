@@ -48,7 +48,7 @@ function buildAssignments(roster: RosterEntry[], drivers: Driver[], movements: M
     return row;
   };
   for (const r of roster) {
-    if (r.primeMoverId !== vehicleId || (r.shift !== "Morning" && r.shift !== "Night")) continue;
+    if (r.primeMoverId !== vehicleId || (r.shift !== "Morning" && r.shift !== "Afternoon" && r.shift !== "Night")) continue;
     const row = get(r.driverId);
     row.shifts += 1;
     row.firstDate = !row.firstDate || r.date < row.firstDate ? r.date : row.firstDate;

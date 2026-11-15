@@ -16,7 +16,7 @@ export function isSubmitted(run: PayRun): boolean {
   for (let i = run.history.length - 1; i >= 0; i--) {
     const a = run.history[i].action;
     if (a === "Submitted") return true;
-    if (a === "Adjustment added" || a === "Draft generated" || a === "Draft regenerated" || a === "Reopened") return false;
+    if (a === "Adjustment added" || a === "Auto-updated" || a === "Draft generated" || a === "Draft regenerated" || a === "Reopened") return false;
   }
   return false;
 }
@@ -163,5 +163,28 @@ export function approvePayRun(draft: DB, runId: string, note = ""): MutationResu
     description: `Approved ${run.id} (${formatDate(run.periodStart)} - ${formatDate(run.periodEnd)}), ${run.lines.length} drivers, total ${formatMoney(round2(total), run.currency)} (simulated).`,
   });
   notify(draft, { title: "Pay run approved", body: `${run.id} approved by ${actor.name} (simulated).`, level: "success", href: `/payments/${run.id}` });
+  return { ok: true };
+}
+
+/** Reopen an Approved pay run as a Draft (with a reason). `payments.approve` only; it must be re-submitted and re-approved. */
+export function reopenPayRun(draft: DB, runId: string, reason: string): MutationResult {
+  const actor = actorOf(draft);
+  if (!can(actor.role, "payments.approve")) return { ok: false, error: "Only Finance Managers and Administrators can reopen pay runs." };
+  const run = draft.payRuns.find((r) => r.id === runId);
+  if (!run) return { ok: false, error: "Pay run not found." };
+  if (run.status !== "Approved") return { ok: false, error: "Only Approved pay runs can be reopened." };
+  if (!reason.trim()) return { ok: false, error: "A reason is required to reopen an approved pay run." };
+  run.status = "Draft";
+  run.approvedAt = undefined;
+  run.approvedBy = undefined;
+  run.history.push({ at: nowOf(draft), by: actor.name, action: "Reopened", note: reason.trim() });
+  logAudit(draft, {
+    action: "Pay Run Reopened",
+    module: "Payments",
+    entityId: run.id,
+    financial: true,
+    description: `${run.id} reopened as a Draft by ${actor.name}: ${reason.trim()}`,
+  });
+  notify(draft, { title: "Pay run reopened", body: `${run.id} was reopened and is a live Draft again.`, level: "warning", href: `/payments/${run.id}` });
   return { ok: true };
 }

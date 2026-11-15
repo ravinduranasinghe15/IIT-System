@@ -75,7 +75,7 @@ export function ReportsView() {
     <div className="space-y-4">
       <PageHeader
         title="Reports & Analytics"
-        description="Twelve operational and financial reports with filters, charts and CSV / Excel export."
+        description="Twelve operational and financial reports with filters, charts and a download option (Excel, CSV or PDF) for whatever filters are applied."
         actions={<ReportExport type={activeType} filters={filters} result={result} />}
       />
 
@@ -127,7 +127,7 @@ export function ReportsView() {
         </div>
       </section>
 
-      <ReportFiltersBar db={db} filters={filters} onChange={setFilters} supported={meta.filters} />
+      <ReportFiltersBar db={db} filters={filters} onChange={setFilters} supported={meta.filters} downloadSlot={<ReportExport type={activeType} filters={filters} result={result} />} />
 
       <div className="flex items-center gap-2 text-sm">
         <h2 className="text-base font-semibold text-navy">{meta.label} Report</h2>

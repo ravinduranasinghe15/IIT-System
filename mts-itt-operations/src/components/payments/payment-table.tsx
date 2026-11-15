@@ -64,6 +64,20 @@ export function PayLinesTable({
       sortValue: (l) => l.excluded.length,
       cell: (l) => (l.excluded.length ? <span className="font-medium text-amber-600">{l.excluded.length}</span> : <span className="text-slate">0</span>),
     },
+    {
+      key: "pending",
+      header: "Pending (held)",
+      align: "right",
+      sortValue: (l) => l.pendingAmount ?? 0,
+      cell: (l) =>
+        (l.pendingAmount ?? 0) > 0 ? (
+          <span className="font-medium text-amber-600" title="Completed movements held back by an exception. They are paid once the exception is cleared.">
+            {formatMoney(l.pendingAmount ?? 0, currency)}
+          </span>
+        ) : (
+          <span className="text-slate">–</span>
+        ),
+    },
     { key: "total", header: "Total Earnings", align: "right", sortValue: (l) => l.total, cell: (l) => <span className="font-semibold text-ink">{formatMoney(l.total, currency)}</span> },
     { key: "status", header: "Status", cell: () => <StatusBadge status={status} /> },
     {

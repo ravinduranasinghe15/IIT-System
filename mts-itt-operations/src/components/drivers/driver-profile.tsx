@@ -88,7 +88,7 @@ export function DriverProfile() {
     { key: "date", header: "Date", sortValue: (r) => r.date, cell: (r) => <span className="whitespace-nowrap">{formatDate(r.date)}</span> },
     { key: "shift", header: "Shift", cell: (r) => <StatusBadge status={r.shift} /> },
     { key: "pm", header: "Prime Mover", cell: (r) => r.primeMoverId ?? "—" },
-    { key: "att", header: "Attendance", cell: (r) => (r.shift === "Morning" || r.shift === "Night" ? <StatusBadge status={r.date > today ? "Scheduled" : r.attendance} /> : <span className="text-slate">—</span>) },
+    { key: "att", header: "Attendance", cell: (r) => (r.shift === "Morning" || r.shift === "Afternoon" || r.shift === "Night" ? <StatusBadge status={r.date > today ? "Scheduled" : r.attendance} /> : <span className="text-slate">—</span>) },
     { key: "by", header: "Recorded by", cell: (r) => r.recordedBy ?? "—" },
   ];
   const leaveCols: Column<LeaveRecord>[] = [

@@ -64,3 +64,4 @@ export const CURRENCIES = ["AUD", "USD", "LKR", "EUR", "GBP"];
 
 export const ASSUMPTION_NOTE =
   "Demo assumption – contractual treatment is not yet confirmed by MTS and is configurable in Settings.";
+

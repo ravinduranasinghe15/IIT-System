@@ -4,8 +4,9 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/contexts/app-context";
 import { addServiceRecord, updateServiceRecord, updateVehicleDetails, type ServiceInput, type VehicleEditInput } from "@/lib/mutations/fleet";
-import { addManualFuel, importGpsRows, reviewFuel, type GpsImportInput, type ManualFuelInput } from "@/lib/mutations/fuel";
+import { addManualFuel, importFuelInvoices, importGpsRows, reviewFuel, type GpsImportInput, type ManualFuelInput } from "@/lib/mutations/fuel";
 import type { FuelReview } from "@/types/fuel";
+import type { DemoFuelInvoice } from "@/data/demo-fuel-invoices";
 
 function run<T>(fn: () => T, success: (r: T) => string | { title: string; description?: string }): T | null {
   try {
@@ -30,6 +31,8 @@ export function useFleetActions() {
       editVehicle: (id: string, input: VehicleEditInput) => run(() => update((d) => updateVehicleDetails(d, id, input)), (r) => `${r.id} updated`),
       addFuel: (input: ManualFuelInput) => run(() => update((d) => addManualFuel(d, input)), (r) => ({ title: "Fuel entry added", description: `${r.litres} L for ${r.vehicleId}` })),
       importGps: (input: GpsImportInput) => run(() => update((d) => importGpsRows(d, input)), (r) => ({ title: "GPS import complete", description: `${r.records} records from ${r.fileName}` })),
+      importInvoices: (fileName: string, rows: DemoFuelInvoice[]) =>
+        run(() => update((d) => importFuelInvoices(d, fileName, rows)), (r) => ({ title: "Fuel invoices imported", description: `${r.records} invoices for ${r.vehicles} vehicles` })),
       review: (vehicleId: string, month: string, status: FuelReview["status"], note: string) =>
         run(() => update((d) => reviewFuel(d, vehicleId, month, status, note)), () => "Review saved"),
     }),

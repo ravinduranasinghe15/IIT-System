@@ -20,12 +20,15 @@ import { FuelTable } from "./fuel-table";
 import { FuelReconciliation } from "./fuel-reconciliation";
 import { FuelEntryDialog } from "./fuel-entry-dialog";
 import { GpsImportDialog } from "./gps-import-dialog";
+import { FuelInvoiceImportDialog } from "./fuel-invoice-import-dialog";
+import { DEMO_FUEL_FILE_HREF } from "@/data/demo-fuel-invoices";
 
 export function FuelView() {
   const { db } = useApp();
   const { can, isDriver } = useAuth();
   const [entryOpen, setEntryOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
   const manage = can("fleet.manage");
 
   const latest = useMemo(() => fuelMonths(db)[0] ?? "", [db]);
@@ -56,6 +59,9 @@ export function FuelView() {
             <Button variant="outline" render={<a href="/documents/sample-trackmycar.csv" download />}>
               <Download /> Sample GPS file
             </Button>
+            <Button variant="outline" render={<a href={DEMO_FUEL_FILE_HREF} download />}>
+              <Download /> Sample invoices file
+            </Button>
             <Button variant="outline" render={<Link href="/fleet" />}>
               Fleet
             </Button>
@@ -63,6 +69,9 @@ export function FuelView() {
               <>
                 <Button variant="outline" onClick={() => setImportOpen(true)}>
                   <Upload /> Import Track My Car
+                </Button>
+                <Button variant="outline" onClick={() => setInvoiceOpen(true)}>
+                  <Upload /> Import fuel invoices
                 </Button>
                 <Button onClick={() => setEntryOpen(true)}>
                   <Plus /> Add fuel entry
@@ -105,6 +114,7 @@ export function FuelView() {
 
       {entryOpen && <FuelEntryDialog open onOpenChange={setEntryOpen} />}
       {importOpen && <GpsImportDialog open onOpenChange={setImportOpen} />}
+      {invoiceOpen && <FuelInvoiceImportDialog open onOpenChange={setInvoiceOpen} />}
     </div>
   );
 }

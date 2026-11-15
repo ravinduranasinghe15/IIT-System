@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,8 @@ interface Props {
   filters: ReportFilters;
   onChange: (f: ReportFilters) => void;
   supported: FilterKey[];
+  /** Optional download control shown next to Reset */
+  downloadSlot?: ReactNode;
 }
 
 function presets() {
@@ -36,7 +39,7 @@ function presets() {
   ];
 }
 
-export function ReportFiltersBar({ db, filters, onChange, supported }: Props) {
+export function ReportFiltersBar({ db, filters, onChange, supported, downloadSlot }: Props) {
   const set = <K extends keyof ReportFilters>(k: K, v: ReportFilters[K]) => onChange({ ...filters, [k]: v });
   const on = (k: FilterKey) => supported.includes(k);
   const invalid = !!filters.from && !!filters.to && filters.from > filters.to;
@@ -49,9 +52,12 @@ export function ReportFiltersBar({ db, filters, onChange, supported }: Props) {
       title="Filters"
       description="Dates are operational days (07:00 → 07:00), not calendar timestamps"
       actions={
-        <Button variant="outline" size="sm" onClick={() => onChange(defaultFilters())}>
-          <RotateCcw /> Reset
-        </Button>
+        <>
+          <Button variant="outline" size="sm" onClick={() => onChange(defaultFilters())}>
+            <RotateCcw /> Reset
+          </Button>
+          {downloadSlot}
+        </>
       }
     >
       <div className="mb-3 flex flex-wrap gap-1.5">

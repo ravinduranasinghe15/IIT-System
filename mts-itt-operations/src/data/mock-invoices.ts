@@ -13,17 +13,20 @@ const RATE_TABLE: { s: TerminalCode; d: TerminalCode; size: ContainerSize; old: 
   { s: "CWIT", d: "SAGT", size: "40FT", old: 72, neu: 75, diesel: 2.8 },
 ];
 
+/** Billing rates were authored on a small scale; shown in LKR (x70, rounded to the nearest 50). */
+const lkr = (n: number) => Math.round((n * 70) / 50) * 50;
+
 export function buildRates(): RateRecord[] {
   const out: RateRecord[] = [];
   let n = 0;
   const id = () => `RT-${String(++n).padStart(3, "0")}`;
   for (const r of RATE_TABLE) {
-    out.push({ id: id(), source: r.s, destination: r.d, containerSize: r.size, baseRate: r.old, effectiveFrom: "2026-01-01", effectiveTo: "2026-09-30", dieselAdjustmentPct: 2.5, status: "Inactive" });
-    out.push({ id: id(), source: r.s, destination: r.d, containerSize: r.size, baseRate: r.neu, effectiveFrom: "2026-10-01", effectiveTo: null, dieselAdjustmentPct: r.diesel, status: "Active" });
+    out.push({ id: id(), source: r.s, destination: r.d, containerSize: r.size, baseRate: lkr(r.old), effectiveFrom: "2026-01-01", effectiveTo: "2026-09-30", dieselAdjustmentPct: 2.5, status: "Inactive" });
+    out.push({ id: id(), source: r.s, destination: r.d, containerSize: r.size, baseRate: lkr(r.neu), effectiveFrom: "2026-10-01", effectiveTo: null, dieselAdjustmentPct: r.diesel, status: "Active" });
   }
   // CICT pilot rates – draft until sample format and contract are confirmed
-  out.push({ id: id(), source: "CICT", destination: "JCT", containerSize: "20FT", baseRate: 66, effectiveFrom: "2026-11-01", effectiveTo: null, dieselAdjustmentPct: 3.5, status: "Draft" });
-  out.push({ id: id(), source: "CICT", destination: "JCT", containerSize: "40FT", baseRate: 99, effectiveFrom: "2026-11-01", effectiveTo: null, dieselAdjustmentPct: 3.5, status: "Draft" });
+  out.push({ id: id(), source: "CICT", destination: "JCT", containerSize: "20FT", baseRate: lkr(66), effectiveFrom: "2026-11-01", effectiveTo: null, dieselAdjustmentPct: 3.5, status: "Draft" });
+  out.push({ id: id(), source: "CICT", destination: "JCT", containerSize: "40FT", baseRate: lkr(99), effectiveFrom: "2026-11-01", effectiveTo: null, dieselAdjustmentPct: 3.5, status: "Draft" });
   return out;
 }
 

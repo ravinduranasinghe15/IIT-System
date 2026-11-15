@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { toast } from "sonner";
 import type { DB } from "@/types/db";
 import { DB_VERSION, createSeedDB } from "@/data/seed";
+import { syncLivePayRun } from "@/lib/mutations/payment-sync";
 
 const STORAGE_KEY = "mts-itt-demo-db-v1";
 const RUN_KEY = "mts-itt-server-run";
@@ -81,6 +82,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const next = structuredClone(ref.current as DB);
     next.counters.tick = (next.counters.tick ?? 0) + 1;
     const result = fn(next);
+    try {
+      syncLivePayRun(next); // driver pay for the current period follows the data automatically
+    } catch {
+      /* never let payroll sync break an unrelated update */
+    }
     ref.current = next;
     setDb(next);
     persist(next);

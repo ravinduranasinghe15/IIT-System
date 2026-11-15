@@ -5,6 +5,7 @@ import { actorOf, logAudit, nextId, notify, nowOf } from "@/lib/db-helpers";
 import { fuelReconKey, reconcileFuel } from "@/lib/fuel-reconciliation";
 import { formatDate, formatMonth } from "@/lib/date-utils";
 import type { GpsRowResult } from "@/lib/gps-import";
+import type { DemoFuelInvoice } from "@/data/demo-fuel-invoices";
 
 /** Fuel records are append-only originals: these mutators only ADD records or store reviews. */
 
@@ -129,4 +130,50 @@ export function reviewFuel(d: DB, vehicleId: string, month: string, status: Fuel
     description: `${vehicleId} ${formatMonth(month)} fuel reconciliation marked "${status}".${review.note ? ` Note: ${review.note}` : ""} Original GPS and invoice records unchanged.`,
   });
   return review;
+}
+
+export interface FuelInvoiceImportResult {
+  fileName: string;
+  records: number;
+  vehicles: number;
+  litres: number;
+  amount: number;
+}
+
+/** Adds fuel-station invoice records (source "Fuel Invoice"). Existing records are never touched; repeated invoice numbers are refused. */
+export function importFuelInvoices(d: DB, fileName: string, rows: DemoFuelInvoice[]): FuelInvoiceImportResult {
+  if (rows.some((r) => d.fuelRecords.some((x) => x.vehicleId === r.vehicleId && x.invoiceNo === r.invoiceNo))) {
+    throw new Error("These fuel invoices were already imported (invoice numbers already exist).");
+  }
+  for (const r of rows) {
+    d.fuelRecords.push({
+      id: nextId(d, "fuel", "FR-", 4),
+      vehicleId: r.vehicleId,
+      date: r.date,
+      source: "Fuel Invoice",
+      litres: r.litres,
+      amount: r.amount,
+      station: r.station,
+      invoiceNo: r.invoiceNo,
+      enteredBy: "Fuel invoice import",
+    });
+  }
+  const res = {
+    fileName,
+    records: rows.length,
+    vehicles: new Set(rows.map((r) => r.vehicleId)).size,
+    litres: Math.round(rows.reduce((s, r) => s + r.litres, 0) * 10) / 10,
+    amount: rows.reduce((s, r) => s + r.amount, 0),
+  };
+  logAudit(d, {
+    action: "Fuel Invoices Imported",
+    module: "Fuel",
+    entityId: fileName,
+    description: `Imported ${res.records} fuel-station invoice(s) for ${res.vehicles} vehicle(s) from ${fileName}. Existing records preserved.`,
+  });
+  const flagged = reconcileFuel(d).filter((r) => r.flagged && r.reviewStatus === "Pending Review");
+  if (flagged.length) {
+    notify(d, { title: "Fuel variance flagged", body: `${flagged.length} vehicle-month(s) exceed the ${d.settings.fuelVarianceThresholdPct}% variance threshold.`, level: "warning", href: "/fleet/fuel" });
+  }
+  return res;
 }
