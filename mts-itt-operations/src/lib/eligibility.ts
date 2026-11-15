@@ -44,14 +44,16 @@ export function isBillable(m: Movement, db: DB): boolean {
   return billableStatus(m, db) === "Billable";
 }
 
+/**
+ * Driver pay rule: a movement is paid only when its status is Completed AND its billable status is Billable
+ * (so no unresolved exception and no correction awaiting approval), and a driver is recorded.
+ */
 export function payEligibility(m: Movement, db: DB): { eligible: boolean; reason?: string } {
-  if (unresolvedExceptionsFor(db, m.id).length > 0) return { eligible: false, reason: "Unresolved exception" };
-  if (m.pendingApproval) return { eligible: false, reason: "Correction awaiting manager approval" };
+  if (m.status !== "Completed") return { eligible: false, reason: `Not completed (${m.status})` };
+  const billable = billableStatus(m, db);
+  if (billable !== "Billable") return { eligible: false, reason: `Not billable (${billable})` };
   if (!m.driverId) return { eligible: false, reason: "No driver recorded" };
-  if (m.status === "Completed") return { eligible: true };
-  if (m.status === "Rejected") return db.settings.payRejected ? { eligible: true } : { eligible: false, reason: "Rejected delivery (pay rule: excluded)" };
-  if (m.status === "Damaged") return db.settings.payDamaged ? { eligible: true } : { eligible: false, reason: "Damaged delivery (pay rule: excluded)" };
-  return { eligible: false, reason: `Not completed (${m.status})` };
+  return { eligible: true };
 }
 
 export function invoiceEligibility(m: Movement, db: DB): { eligible: boolean; reason?: string } {

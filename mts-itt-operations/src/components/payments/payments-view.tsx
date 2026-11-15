@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Banknote, CalendarRange, CheckCircle2, FilePlus2, Route, Users } from "lucide-react";
+import { Banknote, CalendarRange, CheckCircle2, FilePlus2, Radio, Route, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -11,7 +11,7 @@ import { NativeSelect } from "@/components/shared/native-select";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
-import { payPeriods } from "@/lib/date-utils";
+import { formatDateTime, payPeriods } from "@/lib/date-utils";
 import { computePayLines } from "@/lib/payment-calculator";
 import { formatMoney, formatNumber } from "@/lib/utils";
 import type { PayLine } from "@/types/payment";
@@ -49,6 +49,10 @@ export function PaymentsView() {
   const approvedTotal = db.payRuns.filter((r) => r.status === "Approved").reduce((s, r) => s + sum(r), 0);
   const eligible = lines.reduce((s, l) => s + l.movementIds.length, 0);
   const currency = db.settings.currency;
+  const live = db.payRuns.find((r) => r.periodStart === periods[0].start && r.periodEnd === periods[0].end);
+  const liveTotal = live ? live.lines.reduce((s, l) => s + l.total, 0) : 0;
+  const livePending = live ? live.lines.reduce((s, l) => s + (l.pendingAmount ?? 0), 0) : 0;
+  const lastEvent = live ? live.history[live.history.length - 1] : null;
 
   if (!canSeeFinancials) return null;
 
@@ -65,6 +69,52 @@ export function PaymentsView() {
           )
         }
       />
+
+      <SectionCard
+        className="mb-4 border-brand/30"
+        title={`Current pay period · ${periodLabel(periods[0].start, periods[0].end)}`}
+        description={
+          live?.status === "Approved"
+            ? "This period is approved and locked."
+            : "Updates automatically whenever movements, exceptions or drivers change. Review it, then submit and approve."
+        }
+        actions={
+          <>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${live?.status === "Approved" ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : "bg-sky-50 text-sky-700 ring-sky-600/20"}`}>
+              <Radio className="size-3.5" /> {live?.status === "Approved" ? "Approved" : "Live"}
+            </span>
+            {live && (
+              <Button size="sm" onClick={() => router.push(`/payments/${live.id}`)}>
+                Open {live.id}
+              </Button>
+            )}
+          </>
+        }
+      >
+        {live ? (
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div>
+              <div className="text-xs text-slate">Confirmed earnings</div>
+              <div className="text-xl font-semibold text-ink">{formatMoney(liveTotal, currency)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate">Pending (held by exceptions)</div>
+              <div className="text-xl font-semibold text-amber-600">{formatMoney(livePending, currency)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate">Drivers with earnings</div>
+              <div className="text-xl font-semibold text-ink">{live.lines.filter((l) => l.driverId !== "UNASSIGNED" && l.total > 0).length}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs text-slate">Last change</div>
+              <div className="truncate text-sm text-ink" title={lastEvent?.note}>{lastEvent ? `${lastEvent.action} · ${formatDateTime(lastEvent.at)}` : "—"}</div>
+              <div className="line-clamp-2 text-xs text-slate">{lastEvent?.note}</div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate">No movements in this period yet. Import a terminal report and this fills in by itself.</p>
+        )}
+      </SectionCard>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard label="Current Pay Period" value={`${periods[0].index + 1}`} icon={CalendarRange} tone="navy" hint={periodLabel(periods[0].start, periods[0].end)} />

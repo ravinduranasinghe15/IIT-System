@@ -7,15 +7,15 @@ import { DEFAULT_MAPPINGS } from "./mock-imports";
 import { buildRates } from "./mock-invoices";
 import { realToday } from "@/lib/date-utils";
 
-export const DB_VERSION = 8;
+export const DB_VERSION = 9;
 
 export const DEFAULT_SETTINGS: Settings = {
   timezone: DEFAULT_TIMEZONE,
   opDayStartHour: OP_DAY_START_HOUR,
-  currency: "AUD",
+  currency: "LKR",
   billingUnitMode: "per-trailer",
   payUnitMode: "per-trailer",
-  payRates: { "20FT": 14, "40FT": 21 },
+  payRates: { "20FT": 1000, "40FT": 1500 },
   billRejected: false,
   billDamaged: false,
   payRejected: false,

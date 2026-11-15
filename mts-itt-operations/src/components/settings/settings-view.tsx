@@ -208,8 +208,6 @@ export function SettingsView() {
           <div className="space-y-2">
             {toggle("billRejected", "Bill rejected deliveries", "Include Rejected movements in terminal invoices")}
             {toggle("billDamaged", "Bill damaged deliveries", "Include Damaged movements in terminal invoices")}
-            {toggle("payRejected", "Pay rejected deliveries", "Include Rejected movements in driver pay")}
-            {toggle("payDamaged", "Pay damaged deliveries", "Include Damaged movements in driver pay")}
           </div>
           <Assumption />
         </SectionCard>

@@ -22,7 +22,7 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { formatDateTime } from "@/lib/date-utils";
 import { downloadCsv } from "@/lib/export-utils";
-import { approvePayRun, generatePayRun, isSubmitted, setPayAdjustment, submitPayRun } from "@/lib/mutations/payment";
+import { approvePayRun, generatePayRun, isSubmitted, reopenPayRun, setPayAdjustment, submitPayRun } from "@/lib/mutations/payment";
 import { formatMoney } from "@/lib/utils";
 import type { PayLine } from "@/types/payment";
 import { PayLinesTable } from "./payment-table";
@@ -112,7 +112,7 @@ export function PayRunDetail() {
   const { can, canSeeFinancials } = useAuth();
   const [breakdown, setBreakdown] = useState<PayLine | null>(null);
   const [adjusting, setAdjusting] = useState<PayLine | null>(null);
-  const [confirm, setConfirm] = useState<"submit" | "approve" | "regen" | null>(null);
+  const [confirm, setConfirm] = useState<"submit" | "approve" | "regen" | "reopen" | null>(null);
   const [note, setNote] = useState("");
 
   const run = db.payRuns.find((r) => r.id === id);
@@ -156,6 +156,7 @@ export function PayRunDetail() {
         "Adjustment Note": l.adjustmentNote,
         "Total Earnings": l.total,
         "Excluded Movements": l.excluded.length,
+        "Pending Amount": l.pendingAmount ?? 0,
         Currency: run.currency,
         Status: run.status,
       })),
@@ -177,6 +178,9 @@ export function PayRunDetail() {
             {manage && !submitted && (
               <Button onClick={() => setConfirm("submit")}><Send /> Submit for approval</Button>
             )}
+            {!draft && can("payments.approve") && (
+              <Button variant="outline" onClick={() => setConfirm("reopen")}><RefreshCw /> Reopen</Button>
+            )}
             {draft && can("payments.approve") && (
               <Button onClick={() => setConfirm("approve")} disabled={!submitted} title={submitted ? undefined : "Submit the draft first"}>
                 <CheckCircle2 /> Approve (simulated)
@@ -193,7 +197,7 @@ export function PayRunDetail() {
       )}
       {draft && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-amber-700">
-          Draft – not approved. Only an authorised Finance Manager or Administrator can approve. Adjusting or regenerating after submission requires re-submission.
+          Live draft – this pay run updates automatically as movements, exceptions and drivers change. Only an authorised Finance Manager or Administrator can approve. Any change after submission requires re-submission.
         </div>
       )}
 
@@ -218,7 +222,7 @@ export function PayRunDetail() {
         <ol className="space-y-3">
           {[...run.history].reverse().map((h, i) => (
             <li key={i} className="flex gap-3 text-sm">
-              <div className={`mt-1.5 size-2 shrink-0 rounded-full ${h.action === "Approved" ? "bg-success" : "bg-brand"}`} />
+              <div className={`mt-1.5 size-2 shrink-0 rounded-full ${h.action === "Approved" ? "bg-success" : h.action === "Auto-updated" ? "bg-sky-400" : "bg-brand"}`} />
               <div className="min-w-0">
                 <div className="font-medium text-ink">{h.action}</div>
                 <div className="text-xs text-slate">{formatDateTime(h.at)} · {h.by}</div>
@@ -249,6 +253,16 @@ export function PayRunDetail() {
         onConfirm={() => act(() => update((d) => submitPayRun(d, run.id, note)), "Submitted for approval")}
       >
         <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note for the approver" />
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={confirm === "reopen"}
+        onOpenChange={(o) => !o && setConfirm(null)}
+        title="Reopen this approved pay run?"
+        description="It becomes a live Draft again, starts updating automatically, and must be re-submitted and re-approved. A reason is required and is recorded in the audit log."
+        confirmLabel="Reopen"
+        onConfirm={() => act(() => update((d) => reopenPayRun(d, run.id, note)), "Pay run reopened")}
+      >
+        <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Reason for reopening (required)" />
       </ConfirmDialog>
       <ConfirmDialog
         open={confirm === "approve"}

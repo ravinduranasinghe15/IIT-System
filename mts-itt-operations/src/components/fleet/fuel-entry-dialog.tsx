@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FileText, X } from "lucide-react";
+import { Download, FileText, ReceiptText, X } from "lucide-react";
 import { toast } from "sonner";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field } from "@/components/shared/field";
@@ -20,6 +20,12 @@ import { demoToday } from "@/lib/date-utils";
 import type { ManualFuelInput } from "@/lib/mutations/fuel";
 
 const MAX_INLINE_KB = 1500;
+const SAMPLE_RECEIPT = {
+  href: "/documents/sample-fuel-receipt.png",
+  name: "sample-fuel-receipt.png",
+  // Values printed on the sample receipt
+  values: { vehicleId: "PM-001", date: "2026-11-13", litres: "120", amount: "36000", station: "Lanka Fuel Station, Peliyagoda", invoiceNo: "FS-20261113-0412", odometerKm: "184520" },
+};
 const num = (msg: string) => z.string().regex(/^\d+(\.\d+)?$/, msg);
 
 const schema = z.object({
@@ -40,9 +46,11 @@ export function FuelEntryDialog({ open, onOpenChange, vehicleId }: { open: boole
   const { canSeeFinancials } = useAuth();
   const actions = useFleetActions();
   const [file, setFile] = useState<File | null>(null);
+  const [sample, setSample] = useState(false);
   const {
     register,
     control,
+    setValue,
     handleSubmit,
     setError,
     formState: { errors },
@@ -50,6 +58,26 @@ export function FuelEntryDialog({ open, onOpenChange, vehicleId }: { open: boole
     resolver: zodResolver(schema),
     defaultValues: { vehicleId: vehicleId ?? "", date: demoToday(), litres: "", amount: "", station: "", invoiceNo: "", odometerKm: "", note: "" },
   });
+
+  const useSample = async () => {
+    try {
+      const blob = await (await fetch(SAMPLE_RECEIPT.href)).blob();
+      setFile(new File([blob], SAMPLE_RECEIPT.name, { type: "image/png" }));
+      setSample(true);
+      const v = SAMPLE_RECEIPT.values;
+      const opts = { shouldValidate: true, shouldDirty: true } as const;
+      if (!vehicleId) setValue("vehicleId", v.vehicleId, opts);
+      setValue("date", v.date, opts);
+      setValue("litres", v.litres, opts);
+      setValue("amount", v.amount, opts);
+      setValue("station", v.station, opts);
+      setValue("invoiceNo", v.invoiceNo, opts);
+      setValue("odometerKm", v.odometerKm, opts);
+      toast.success("Sample receipt attached", { description: "The fields were filled from the receipt. Check them, then save." });
+    } catch {
+      toast.error("Could not load the sample receipt");
+    }
+  };
 
   const readFile = (f: File) =>
     new Promise<string | undefined>((resolve) => {
@@ -130,18 +158,32 @@ export function FuelEntryDialog({ open, onOpenChange, vehicleId }: { open: boole
           <Textarea rows={1} {...register("note")} />
         </Field>
         <div className="sm:col-span-2">
-          <div className="mb-1 text-xs font-medium text-slate">Fuel invoice attachment (optional)</div>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-medium text-slate">Fuel invoice attachment (optional)</div>
+            <div className="flex gap-1">
+              <Button type="button" variant="outline" size="xs" onClick={useSample}>
+                <ReceiptText /> Use sample receipt
+              </Button>
+              <Button type="button" variant="ghost" size="xs" render={<a href={SAMPLE_RECEIPT.href} download />} nativeButton={false}>
+                <Download /> Download
+              </Button>
+            </div>
+          </div>
           {file ? (
             <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
               <FileText className="size-4 text-brand" />
               <span className="min-w-0 flex-1 truncate">{file.name}</span>
               <span className="text-xs text-slate">{Math.max(1, Math.round(file.size / 1024))} KB</span>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove attachment" onClick={() => setFile(null)}>
+              <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove attachment" onClick={() => { setFile(null); setSample(false); }}>
                 <X />
               </Button>
             </div>
           ) : (
             <FileDropzone compact accept="image/*,application/pdf" onFiles={(f) => setFile(f[0])} title="Drop the fuel invoice here" hint="image or PDF" />
+          )}
+          {sample && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={SAMPLE_RECEIPT.href} alt="Sample fuel receipt" className="mx-auto mt-2 max-h-64 rounded-lg border bg-white object-contain" />
           )}
           <p className="mt-1 text-xs text-slate">Stored in Chits & Evidence as a document of type &quot;Fuel Invoice&quot;.</p>
         </div>
