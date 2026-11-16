@@ -6,6 +6,7 @@ import { ChevronsLeft, ChevronsRight, Ship } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
+import { usePendingPayRequestCount } from "@/components/payments/pending-requests";
 
 function isActive(pathname: string, href: string, key: string) {
   if (key === "drivers") return pathname.startsWith("/drivers");
@@ -23,6 +24,7 @@ export function SidebarContent({
 }) {
   const pathname = usePathname();
   const { user, role, isDriver, canAccess } = useAuth();
+  const pendingPay = usePendingPayRequestCount();
   const items = NAV_ITEMS.filter((n) => canAccess(isDriver && n.driverHref ? n.driverHref : n.href));
 
   return (
@@ -58,13 +60,21 @@ export function SidebarContent({
               title={collapsed ? n.label : undefined}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 collapsed && "justify-center px-2",
                 active ? "bg-sidebar-accent text-white shadow-sm ring-1 ring-white/10" : "hover:bg-sidebar-accent/60 hover:text-white",
               )}
             >
               <Icon className={cn("size-[18px] shrink-0", active && "text-success")} />
               {!collapsed && <span className="truncate">{n.label}</span>}
+              {n.key === "payments" && pendingPay > 0 && (role === "Administrator" || role === "Finance Manager") && (
+                <span
+                  className={cn("flex size-5 shrink-0 items-center justify-center rounded-full bg-warning text-[11px] font-semibold text-white", collapsed ? "absolute -right-0.5 -top-0.5 size-4 text-[10px]" : "ml-auto")}
+                  title={`${pendingPay} payment request(s) waiting for approval`}
+                >
+                  {pendingPay}
+                </span>
+              )}
             </Link>
           );
         })}

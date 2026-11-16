@@ -10,6 +10,7 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { daysBetween, demoToday } from "@/lib/date-utils";
 import { DriverTable } from "./driver-table";
+import { PendingPayRequests } from "@/components/payments/pending-requests";
 
 export function DriversView() {
   const { db } = useApp();
@@ -39,6 +40,7 @@ export function DriversView() {
           </>
         }
       />
+      <PendingPayRequests className="mb-4" />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Registered drivers" value={db.drivers.length} icon={Users} tone="navy" />
         <StatCard label="Active" value={active} icon={UserCheck} tone="green" hint={`${db.drivers.filter((d) => d.status === "On Leave").length} on leave`} />

@@ -38,7 +38,7 @@ export const ACTIONS = {
   "fleet.manage": [A, OM],
   "fuel.review": [A, OM, FM],
   "payments.manage": [A, FM],
-  "payments.approve": [A, FM],
+  "payments.approve": [A], // Finance Managers submit pay runs; Administrators approve them
   "invoice.manage": [A, FM],
   "invoice.approve": [A, FM],
   "master.edit": [A, OM],

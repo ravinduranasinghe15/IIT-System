@@ -19,6 +19,7 @@ import { PayLinesTable, PayRunsTable } from "./payment-table";
 import { PayRulesNote, periodLabel } from "./payment-summary";
 import { GeneratePayDialog } from "./generate-dialog";
 import { PayBreakdownDialog } from "./payment-breakdown";
+import { PendingPayRequests } from "./pending-requests";
 
 export function PaymentsView() {
   const { db } = useApp();
@@ -69,6 +70,8 @@ export function PaymentsView() {
           )
         }
       />
+
+      <PendingPayRequests className="mb-4" />
 
       <SectionCard
         className="mb-4 border-brand/30"

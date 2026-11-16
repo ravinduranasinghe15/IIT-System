@@ -17,7 +17,8 @@ import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calen
 import { AttendanceDialog } from "./attendance-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
-import { SHIFT_HOURS, checkRosterRules } from "@/lib/roster-rules";
+import { SHIFT_HOURS, checkRosterRules, type WorkShift } from "@/lib/roster-rules";
+import { StatusBadge } from "@/components/shared/status-badge";
 
 export function RosterView() {
   const { db } = useApp();
@@ -71,7 +72,60 @@ export function RosterView() {
   const ruleChecks = useMemo(() => checkRosterRules(drivers, db.roster, start, end), [drivers, db.roster, start, end]);
   const openShifts = [...db.openShifts].sort((a, b) => (a.date < b.date ? -1 : 1));
 
+  const myDays = isDriver && driverId ? db.roster.filter((r) => r.driverId === driverId && r.date >= today && r.date <= addDays(today, 13)).sort((a, b) => (a.date < b.date ? -1 : 1)) : [];
+
   const own = isDriver && driverId ? db.drivers.find((d) => d.id === driverId) : null;
+
+  if (isDriver) {
+    return (
+      <div>
+        <PageHeader
+          title="My roster"
+          description={`Your shifts and trucks for the next 14 days${own ? ` (${own.name})` : ""}.`}
+          actions={<Button onClick={() => setLeaveOpen(true)}>Request leave</Button>}
+        />
+        <SectionCard title="My shifts" description="Morning 7:00 AM – 3:00 PM · Afternoon 3:00 PM – 11:00 PM · Night 11:00 PM – 7:00 AM" bodyClassName="p-0">
+          {myDays.length === 0 ? (
+            <div className="p-6 text-center text-sm text-slate">No shifts are rostered for the next 14 days.</div>
+          ) : (
+            <ul className="divide-y">
+              {myDays.map((r) => {
+                const work = isWorkingShift(r.shift);
+                return (
+                  <li key={r.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-14 shrink-0 text-center">
+                      <div className="text-[11px] font-semibold uppercase text-slate">{formatDay(r.date, "EEE")}</div>
+                      <div className="text-lg font-semibold leading-tight text-ink">{formatDay(r.date, "dd")}</div>
+                      <div className="text-[11px] text-slate">{formatDay(r.date, "MMM")}</div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={work ? "font-semibold text-ink" : "text-slate"}>{r.shift}</span>
+                        {r.date === today && <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">Today</span>}
+                      </div>
+                      {work ? (
+                        <div className="text-xs text-slate">
+                          {SHIFT_HOURS[r.shift as WorkShift].range} · {r.primeMoverId ?? "No truck"}
+                          {r.coveringFor ? " · covering another driver" : ""}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate">{r.shift === "Leave" ? "On leave" : "Day off"}</div>
+                      )}
+                    </div>
+                    {work && r.date <= today && r.attendance !== "Scheduled" && <StatusBadge status={r.attendance} />}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </SectionCard>
+        <div className="mt-4">
+          <LeavePanel driverId={driverId} onRequest={() => setLeaveOpen(true)} />
+        </div>
+        {leaveOpen && <LeaveRequestDialog open onOpenChange={setLeaveOpen} fixedDriverId={driverId} />}
+      </div>
+    );
+  }
 
   return (
     <div>
