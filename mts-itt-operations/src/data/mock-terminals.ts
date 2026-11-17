@@ -13,6 +13,7 @@ export const MOCK_ROUTES: RouteRecord[] = [
   { id: "R-002", code: "SAGT-JCT", source: "SAGT", destination: "JCT", description: "SAGT to Jaya Container Terminal", status: "Active" },
   { id: "R-003", code: "CWIT-SAGT", source: "CWIT", destination: "SAGT", description: "CWIT to SAGT inter-terminal shuttle", status: "Active" },
   { id: "R-004", code: "CICT-JCT", source: "CICT", destination: "JCT", description: "CICT to Jaya Container Terminal (pilot – pending sample validation)", status: "Conditional" },
+  { id: "R-006", code: "SAGT-CWIT", source: "SAGT", destination: "CWIT", description: "SAGT to CWIT inter-terminal shuttle", status: "Active" },
   { id: "R-005", code: "CWIT-ECT", source: "CWIT", destination: "ECT", description: "CWIT to East Container Terminal (not operational)", status: "Inactive" },
 ];
 

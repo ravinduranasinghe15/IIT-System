@@ -1,9 +1,10 @@
 import type { DB } from "@/types/db";
-import type { DocType, EvidenceDoc, OcrField } from "@/types/evidence";
+import type { DocType, DriverLogMeta, EvidenceDoc, OcrField } from "@/types/evidence";
 import { actorOf, logAudit, nextId, nowOf } from "../db-helpers";
 import { ledgerValueFor, sameValue, simulateExtraction } from "../ocr-sim";
 import { makeEvent } from "./movement";
-import { DEMO_CHIT_DIR, demoChitByName, type DemoChit } from "@/data/demo-chits";
+import { DEMO_CHIT_DIR, demoChitByName, demoDriverLogByName, type DemoChit } from "@/data/demo-chits";
+import { logFieldsFromMeta } from "../driver-logs";
 import { PRIORITY_BY_TYPE, raiseExceptions } from "../reconciliation";
 
 /** Stored as a data URL only below this size – larger files keep metadata only (browser storage limits). */
@@ -16,6 +17,7 @@ export interface UploadInput {
   sizeKb: number;
   dataUrl?: string;
   movementId: string | null;
+  driverLog?: DriverLogMeta;
 }
 
 /** Open exceptions of the "missing chit" kind that this document type could explain (never auto-resolved). */
@@ -44,6 +46,7 @@ export function uploadDocument(db: DB, input: UploadInput): { doc: EvidenceDoc; 
     uploadedAt: now,
     uploadedBy: actor.name,
     movementId: input.movementId,
+    driverLog: input.driverLog,
     dataUrl: storedPreview ? input.dataUrl : undefined,
     history: [{ at: now, by: actor.name, action: input.movementId ? `Uploaded and linked to ${input.movementId}` : "Uploaded (not yet linked to a movement)" }],
   };
@@ -56,7 +59,27 @@ export function uploadDocument(db: DB, input: UploadInput): { doc: EvidenceDoc; 
     description: `${doc.id} (${doc.docType}, ${doc.name}) uploaded${input.movementId ? ` and linked to ${input.movementId}` : ""}.`,
     entityId: doc.id,
   });
+  completeIfChitsSubmitted(db, input.movementId);
   return { doc, openExceptionIds: relatedMissingChitExceptions(db, input.movementId, input.docType), storedPreview };
+}
+
+/**
+ * Once a movement has BOTH a loading and a discharge chit submitted, an In Transit movement becomes Completed.
+ * Billable status stays derived and still needs both chits verified (see eligibility.ts).
+ */
+export function completeIfChitsSubmitted(db: DB, movementId: string | null): boolean {
+  const m = movementId ? db.movements.find((x) => x.id === movementId) : null;
+  if (!m || m.status !== "In Transit") return false;
+  const docs = db.documents.filter((d) => d.movementId === m.id);
+  const discharge = docs.find((d) => d.docType === "Discharge Chit");
+  if (!docs.some((d) => d.docType === "Loading Chit") || !discharge) return false;
+  const t = discharge.ocr?.fields.find((x) => x.key === "datetime")?.value ?? "";
+  const validTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(t) && (!m.loadingAt || t.slice(0, 16) >= m.loadingAt.slice(0, 16));
+  m.status = "Completed";
+  if (validTime) m.dischargeAt = t.slice(0, 16);
+  m.events.push(makeEvent(db, "document", `Loading and discharge chits submitted: status set to Completed. Billing still requires both chits to be verified.`));
+  logAudit(db, { action: "Movement Completed (chits submitted)", module: "Evidence", description: `${m.id} set to Completed – loading and discharge chits are on file.`, entityId: m.id });
+  return true;
 }
 
 /** Attach / re-link a document to a movement (or unlink with null). Does NOT resolve any exception. */
@@ -81,6 +104,7 @@ export function linkDocument(db: DB, docId: string, movementId: string | null): 
     description: movementId ? `${doc.id} ${previous ? `re-linked from ${previous} to` : "linked to"} ${movementId}.` : `${doc.id} unlinked from ${previous}.`,
     entityId: doc.id,
   });
+  completeIfChitsSubmitted(db, movementId);
   return { ok: true, openExceptionIds: relatedMissingChitExceptions(db, movementId, doc.docType) };
 }
 
@@ -101,13 +125,20 @@ export function runExtraction(db: DB, docId: string): EvidenceDoc | null {
   const actor = actorOf(db);
   const now = nowOf(db);
   // The prepared demo chit pack has fixed, hard-coded extraction values; anything else uses the simulation.
-  const demo = demoChitByName(doc.name);
-  const sim = demo ? null : simulateExtraction(doc, db);
-  const fields = demo ? demo.fields.map((f) => ({ ...f })) : sim!.fields;
+  const demo = demoChitByName(doc.name) ?? demoDriverLogByName(doc.name);
+  const logMeta = doc.docType === "Driver Log Sheet" ? doc.driverLog : undefined;
+  const sim = demo || logMeta ? null : simulateExtraction(doc, db);
+  const fields = demo ? demo.fields.map((f) => ({ ...f })) : logMeta ? logFieldsFromMeta(db, logMeta) : sim!.fields;
   const sourceMovement = sim?.sourceMovement ?? null;
   const inferred = sim?.inferred ?? false;
   const rerun = !!doc.ocr;
   doc.ocr = { fields, extractedAt: now, verified: false };
+  // a discharge chit read after the movement was auto-completed supplies the missing discharge time
+  const target = doc.docType === "Discharge Chit" && doc.movementId ? db.movements.find((x) => x.id === doc.movementId) : null;
+  const stamp = fields.find((x) => x.key === "datetime")?.value ?? "";
+  if (target && target.status === "Completed" && !target.dischargeAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(stamp) && (!target.loadingAt || stamp.slice(0, 16) >= target.loadingAt.slice(0, 16))) {
+    target.dischargeAt = stamp.slice(0, 16);
+  }
   doc.history.push({
     at: now,
     by: actor.name,
@@ -138,7 +169,7 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { o
   if (m) {
     for (const f of fields) {
       const ledger = ledgerValueFor(f.key, m, doc, db);
-      if (ledger !== null && f.value && !sameValue(f.value, ledger, f.key, db)) differences.push(`${f.label}: chit '${f.value}' vs ledger '${ledger}'`);
+      if (ledger !== null && ledger !== "" && f.value && !sameValue(f.value, ledger, f.key, db)) differences.push(`${f.label}: chit '${f.value}' vs ledger '${ledger}'`);
     }
   }
   doc.ocr = { ...doc.ocr, fields: fields.map((f) => ({ ...f })), verified: true, verifiedBy: actor.name, verifiedAt: now };
@@ -147,6 +178,15 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { o
     by: actor.name,
     action: `Extraction verified by human${corrected.length ? ` (${corrected.length} field(s) corrected: ${corrected.map((c) => c.label).join(", ")})` : " (no corrections)"}`,
   });
+  // A verified discharge chit confirms delivery: an In Transit movement becomes Completed at the verified time.
+  if (m && doc.docType === "Discharge Chit" && m.status === "In Transit") {
+    const t = fields.find((x) => x.key === "datetime")?.value ?? "";
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(t) && (!m.loadingAt || t.slice(0, 16) >= m.loadingAt.slice(0, 16))) {
+      m.status = "Completed";
+      m.dischargeAt = t.slice(0, 16);
+      m.events.push(makeEvent(db, "document", `Delivery confirmed by verified discharge chit ${doc.id}: status set to Completed, discharged ${t.slice(0, 16).replace("T", " ")}.`));
+    }
+  }
   const containerClash = differences.find((x) => x.startsWith("Container Number"));
   if (m && containerClash) {
     const f = fields.find((x) => x.key === "containerNo");
@@ -193,5 +233,6 @@ export function submitDemoChit(db: DB, chit: DemoChit, dataUrl?: string): Submit
     movementId: movement?.id ?? null,
   });
   runExtraction(db, doc.id);
+  completeIfChitsSubmitted(db, movement?.id ?? null);
   return { doc, movementId: movement?.id ?? null };
 }

@@ -79,7 +79,7 @@ export function MovementTable({ rows, onEdit, emptyAction }: { rows: MovementRow
       rows={rows}
       getRowId={(r) => r.movement.id}
       onRowClick={(r) => router.push(`/movements/${r.movement.id}`)}
-      initialSort={{ key: "date", dir: "desc" }}
+      initialSort={{ key: "id", dir: "asc" }}
       emptyTitle="No movements match"
       emptyDescription="Adjust the filters or register a new movement."
       emptyAction={emptyAction}

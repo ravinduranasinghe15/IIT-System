@@ -11,7 +11,9 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { useApp } from "@/contexts/app-context";
 import { formatDateTime } from "@/lib/date-utils";
 import { DOC_TYPES, type EvidenceDoc } from "@/types/evidence";
+import { movementsCovered } from "@/lib/driver-logs";
 import { ocrState } from "./document-detail";
+import { LogCoverage } from "./log-coverage";
 
 export interface DocFilters {
   q: string;
@@ -42,8 +44,9 @@ export function DocumentList({
     const s = filters.q.trim().toLowerCase();
     return docs.filter((d) => {
       if (filters.type && d.docType !== filters.type) return false;
-      if (filters.link === "linked" && !d.movementId) return false;
-      if (filters.link === "unlinked" && d.movementId) return false;
+      const linked = !!d.movementId || movementsCovered(db, d).length > 0;
+      if (filters.link === "linked" && !linked) return false;
+      if (filters.link === "unlinked" && linked) return false;
       if (filters.extraction && ocrState(d) !== filters.extraction) return false;
       if (filters.uploader && d.uploadedBy !== filters.uploader) return false;
       if (!s) return true;
@@ -74,6 +77,8 @@ export function DocumentList({
       cell: (d) =>
         d.movementId ? (
           <Link href={`/movements/${d.movementId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-brand hover:underline">{d.movementId}</Link>
+        ) : d.docType === "Driver Log Sheet" && d.driverLog ? (
+          <LogCoverage doc={d} />
         ) : (
           <span className="text-amber-600">Unlinked</span>
         ),

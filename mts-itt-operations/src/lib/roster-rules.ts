@@ -8,7 +8,7 @@ import { addDays, eachDay, formatDay } from "./date-utils";
  *  - a driver works at most one shift (8 h) per day;
  *  - at least 8 hours' rest between two shifts;
  *  - at least one day off (or leave) in every 7 days;
- *  - drivers rotate through the shifts and through different trucks.
+ *  - drivers rotate through the shifts; each driver drives only his own assigned truck (relief drivers cover other drivers' days off).
  */
 export const WORK_SHIFTS = ["Morning", "Afternoon", "Night"] as const;
 export type WorkShift = (typeof WORK_SHIFTS)[number];
@@ -79,12 +79,13 @@ export const getterFor = (roster: RosterEntry[], driverId: string): EntryGetter 
 export interface AvailableDriver {
   driver: Driver;
   lastShift: string;
-  recentTrucks: string[];
+  /** The driver's own truck (null for relief drivers) */
+  ownTruck: string | null;
   usesWeeklyOff: boolean;
 }
 
 /** Drivers who are free for `shift` on `date`: active, no shift or leave that day, and rested. `usesWeeklyOff` = this is their only day off this week. */
-export function availableDrivers(db: DB, date: string, shift: WorkShift, excludeDriverId?: string): AvailableDriver[] {
+export function availableDrivers(db: DB, date: string, shift: WorkShift, excludeDriverId?: string, truck?: string | null): AvailableDriver[] {
   const out: AvailableDriver[] = [];
   for (const driver of db.drivers) {
     if (driver.status !== "Active" || driver.id === excludeDriverId) continue;
@@ -95,15 +96,16 @@ export function availableDrivers(db: DB, date: string, shift: WorkShift, exclude
     const usesWeeklyOff = breaksWeeklyOff(get, date);
     const history = db.roster.filter((r) => r.driverId === driver.id && isWorkShift(r.shift) && r.date < date).sort((a, b) => (a.date < b.date ? 1 : -1));
     const last = history[0];
-    const trucks = Array.from(new Set(history.slice(0, 5).map((r) => r.primeMoverId).filter(Boolean) as string[])).slice(0, 3);
     out.push({
       driver,
       lastShift: last ? `${last.shift} on ${formatDay(last.date, "EEE dd MMM")}` : "No recent shift",
-      recentTrucks: trucks,
+      ownTruck: driver.primeMoverId,
       usesWeeklyOff,
     });
   }
-  return out.sort((a, b) => Number(a.usesWeeklyOff) - Number(b.usesWeeklyOff) || a.driver.name.localeCompare(b.driver.name));
+  // drivers of the same truck first (they know it), then those who keep their weekly off, then by name
+  const same = (a: AvailableDriver) => (truck && a.ownTruck === truck ? 0 : 1);
+  return out.sort((a, b) => same(a) - same(b) || Number(a.usesWeeklyOff) - Number(b.usesWeeklyOff) || a.driver.name.localeCompare(b.driver.name));
 }
 
 export interface RuleCheck {
@@ -129,6 +131,7 @@ export function checkRosterRules(drivers: Driver[], roster: RosterEntry[], from:
   const off: string[] = [];
   const mix: string[] = [];
   const trucks: string[] = [];
+  const truckOf = new Map(drivers.map((d) => [d.id, d.primeMoverId]));
   for (const d of drivers) {
     const m = byDriver.get(d.id) ?? new Map<string, RosterEntry>();
     for (const date of days) {
@@ -148,8 +151,10 @@ export function checkRosterRules(drivers: Driver[], roster: RosterEntry[], from:
       if (broken) off.push(d.name);
     }
     const worked = days.map((dt) => m.get(dt)).filter((e): e is RosterEntry => !!e && isWorkShift(e.shift));
-    if (worked.length >= 5 && new Set(worked.map((e) => e.shift)).size < 2) mix.push(d.name);
-    if (worked.length >= 3 && new Set(worked.map((e) => e.primeMoverId).filter(Boolean)).size < 2) trucks.push(d.name);
+    if (days.length >= 14 && worked.length >= 5 && new Set(worked.map((e) => e.shift)).size < 2) mix.push(d.name);
+    // a regular driver may only be on his own truck (a relief driver covering someone else is the one exception)
+    const own = truckOf.get(d.id);
+    if (own && worked.some((e) => !e.coveringFor && e.primeMoverId && e.primeMoverId !== own)) trucks.push(d.name);
   }
   const n = drivers.length;
   const res = (key: string, label: string, problems: string[], okText: string): RuleCheck => ({
@@ -163,7 +168,7 @@ export function checkRosterRules(drivers: Driver[], roster: RosterEntry[], from:
     res("hours", `One ${SHIFT_LENGTH_HOURS}-hour shift per driver per day`, [], `${n} of ${n} drivers`),
     res("rest", `At least ${MIN_REST_HOURS} hours of rest between shifts`, rest, `${n} of ${n} drivers`),
     res("off", "At least one day off in every 7 days", off, days.length >= 7 ? `${n} of ${n} drivers` : "Select 7+ days to check"),
-    res("mix", "Drivers rotate through different shifts", mix, `${n} of ${n} drivers`),
-    res("trucks", "Drivers use more than one truck", trucks, `${n} of ${n} drivers`),
+    res("mix", "Drivers rotate through different shifts", mix, days.length >= 14 ? `${n} of ${n} drivers` : "Select 14 days to check"),
+    res("trucks", "Each driver drives only his assigned truck", trucks, `${n} of ${n} drivers`),
   ];
 }

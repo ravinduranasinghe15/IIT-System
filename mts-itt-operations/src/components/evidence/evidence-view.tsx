@@ -17,6 +17,8 @@ import { DocumentDetailDialog, ocrState } from "./document-detail";
 import { DocumentList, EMPTY_FILTERS, type DocFilters } from "./document-list";
 import { ChitSubmitDialog } from "./chit-submit-dialog";
 import { OcrDisclaimer } from "./ocr-review";
+import { movementsCovered } from "@/lib/driver-logs";
+import { MissingChitsDialog, type MissingChitRow } from "./missing-chits-dialog";
 
 export function EvidenceView() {
   const { db } = useApp();
@@ -28,12 +30,16 @@ export function EvidenceView() {
   const movementParam = params.get("movement");
   const [filters, setFilters] = useState<DocFilters>(EMPTY_FILTERS);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [missingOpen, setMissingOpen] = useState(false);
 
   const canUpload = can("evidence.upload");
   const movement = movementParam ? db.movements.find((m) => m.id === movementParam) : undefined;
   const selected = docParam ? (db.documents.find((d) => d.id === docParam) ?? null) : null;
 
-  const docs = useMemo(() => (movementParam ? db.documents.filter((d) => d.movementId === movementParam) : db.documents), [db.documents, movementParam]);
+  const docs = useMemo(
+    () => (movementParam ? db.documents.filter((d) => d.movementId === movementParam || movementsCovered(db, d).some((m) => m.id === movementParam)) : db.documents),
+    [db, movementParam],
+  );
 
   const stats = useMemo(() => {
         const chitsByMovement = new Map<string, Set<string>>();
@@ -43,16 +49,16 @@ export function EvidenceView() {
       set.add(d.docType);
       chitsByMovement.set(d.movementId, set);
     }
-    const missing = db.movements.filter((m) => {
-      if (m.status !== "Completed") return false;
-      const t = m.dischargeAt ?? m.loadingAt;
-      if (!t) return false;
+    const missing: MissingChitRow[] = [];
+    for (const m of db.movements) {
+      if (m.status === "Pending") continue; // not yet dispatched – chits aren't due
       const set = chitsByMovement.get(m.id);
-      return !set?.has("Loading Chit") || !set?.has("Discharge Chit");
-    }).length;
+      const gaps = (["Loading Chit", "Discharge Chit"] as const).filter((t) => !set?.has(t));
+      if (gaps.length) missing.push({ movement: m, missing: [...gaps] });
+    }
     return {
       total: db.documents.length,
-      unlinked: db.documents.filter((d) => !d.movementId).length,
+      unlinked: db.documents.filter((d) => !d.movementId && !movementsCovered(db, d).length).length,
       awaiting: db.documents.filter((d) => ocrState(d) === "Needs Verification").length,
       verified: db.documents.filter((d) => ocrState(d) === "Verified").length,
       missing,
@@ -99,7 +105,14 @@ export function EvidenceView() {
         <StatCard label="Unlinked" value={stats.unlinked} icon={Link2Off} tone="orange" hint="Not tied to a movement" />
         <StatCard label="Awaiting verification" value={stats.awaiting} icon={ScanText} tone="orange" hint="Extraction needs a human check" />
         <StatCard label="Verified extractions" value={stats.verified} icon={FileCheck2} tone="green" />
-        <StatCard label="Completed movements awaiting chits" value={stats.missing} icon={FileQuestion} tone="red" hint="Loading and/or discharge chit not yet submitted" />
+        <StatCard
+          label="Movements awaiting chits"
+          value={stats.missing.length}
+          icon={FileQuestion}
+          tone="red"
+          hint="Loading and/or discharge chit not yet submitted"
+          action={<Button size="xs" variant="outline" onClick={() => setMissingOpen(true)}>View</Button>}
+        />
       </div>
 
       <div className="mt-4 space-y-4">
@@ -149,6 +162,20 @@ export function EvidenceView() {
       </div>
 
       <DocumentDetailDialog key={selected?.id ?? "none"} doc={selected} onClose={() => router.replace(buildUrl({ doc: null }), { scroll: false })} />
+      <MissingChitsDialog
+        open={missingOpen}
+        onOpenChange={setMissingOpen}
+        rows={stats.missing}
+        canUpload={canUpload}
+        onSubmit={() => {
+          setMissingOpen(false);
+          setUploadOpen(true);
+        }}
+        onViewDocuments={(id) => {
+          setMissingOpen(false);
+          router.push(buildUrl({ movement: id, doc: null }), { scroll: false });
+        }}
+      />
       <ChitSubmitDialog open={uploadOpen} onOpenChange={setUploadOpen} onReview={(id) => router.push(buildUrl({ doc: id }), { scroll: false })} />
     </>
   );

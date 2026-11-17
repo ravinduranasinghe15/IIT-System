@@ -22,7 +22,7 @@ function mulberry32(seed) {
 const rnd = mulberry32(20261112);
 const int = (min, max) => min + Math.floor(rnd() * (max - min + 1));
 
-const REG = ["WP LL-4521", "WP LM-3318", "WP CAT-7714", "WP LO-2290", "WP LK-9047", "WP CBG-1163", "WP LN-5582", "WP CAV-8826", "WP LP-3471"];
+const REG = ["LY-5516", "LY-5519", "LY-5520", "LY-5523", "LY-5525", "LY-5601", "LY-6178", "LY-6181", "LY-5321"];
 // litres per km (fuel economy varies by truck; PM-003 / PM-008 burn noticeably more)
 const L_PER_KM = [0.37, 0.39, 0.44, 0.36, 0.38, 0.41, 0.37, 0.43, 0.36];
 

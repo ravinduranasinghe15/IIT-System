@@ -119,6 +119,9 @@ const isWorking = (s: RosterShift) => isWorkShift(s);
 
 /** A truck that is free on `date` for `shift` (not on another driver's shift), avoiding the driver's truck from the day before. */
 function freeTruck(d: DB, date: string, shift: WorkShift, driverId: string): string | null {
+  // a driver with an assigned truck always drives that truck
+  const own = d.drivers.find((x) => x.id === driverId)?.primeMoverId;
+  if (own) return own;
   const taken = new Set(d.roster.filter((r) => r.date === date && r.shift === shift && r.driverId !== driverId && r.primeMoverId).map((r) => r.primeMoverId as string));
   const yesterday = d.roster.find((r) => r.driverId === driverId && r.date === addDays(date, -1))?.primeMoverId ?? null;
   const free = d.primeMovers.filter((p) => p.status === "Active" && !taken.has(p.id));
@@ -165,7 +168,11 @@ export function updateRosterCell(d: DB, driverId: string, date: string, patch: R
       entry.primeMoverId = freeTruck(d, date, patch.shift as WorkShift, driverId);
     }
   }
-  if (patch.primeMoverId !== undefined && isWorking(entry.shift)) entry.primeMoverId = patch.primeMoverId || null;
+  if (patch.primeMoverId !== undefined && isWorking(entry.shift)) {
+    if (drv.primeMoverId && patch.primeMoverId && patch.primeMoverId !== drv.primeMoverId && !entry.coveringFor)
+      throw new Error(`${drv.name} drives only his assigned truck (${drv.primeMoverId}).`);
+    entry.primeMoverId = patch.primeMoverId || null;
+  }
   if (patch.attendance !== undefined && isWorking(entry.shift)) {
     entry.attendance = patch.attendance;
     entry.recordedBy = patch.attendance === "Scheduled" ? undefined : actor.name;
@@ -286,7 +293,7 @@ export interface ReplaceInput {
 /** Assign an available driver to a shift whose driver is absent or on leave. The roster updates immediately. */
 export function replaceDriver(d: DB, input: ReplaceInput): RosterEntry {
   const to = findDriver(d, input.toDriverId);
-  const available = availableDrivers(d, input.date, input.shift, input.fromDriverId).some((a) => a.driver.id === to.id);
+  const available = availableDrivers(d, input.date, input.shift, input.fromDriverId, input.primeMoverId).some((a) => a.driver.id === to.id);
   if (!available) throw new Error(`${to.name} is not available for the ${input.shift} shift on ${formatDate(input.date)}.`);
   const actor = actorOf(d);
   const truck = input.primeMoverId ?? freeTruck(d, input.date, input.shift, to.id);
@@ -296,7 +303,7 @@ export function replaceDriver(d: DB, input: ReplaceInput): RosterEntry {
   entry.primeMoverId = truck;
   entry.attendance = "Scheduled";
   entry.recordedBy = undefined;
-  entry.coveringFor = input.fromDriverId;
+  entry.coveringFor = input.fromDriverId ?? d.openShifts.find((o) => o.id === input.openShiftId)?.driverId;
   entry.coveredBy = undefined;
 
   let fromName = "";

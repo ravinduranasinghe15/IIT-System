@@ -2,6 +2,7 @@ import type { DB } from "@/types/db";
 import type { BillableStatus, Movement } from "@/types/movement";
 import type { UnitMode } from "@/types/payment";
 import { operationalDay } from "./date-utils";
+import { hasVerifiedDriverLog } from "./driver-logs";
 
 /** Number of billable/payable units for a movement. A trailer with 2 x 20FT is ONE journey but may be 1 or 2 units. */
 export function unitsFor(m: Movement, mode: UnitMode): number {
@@ -24,17 +25,35 @@ export function unresolvedExceptionsFor(db: DB, movementId: string) {
   );
 }
 
-/** Derived – never stored – so billable state can never drift from exception state. */
+/** True when the movement has a VERIFIED loading chit AND a VERIFIED discharge chit. */
+export function hasVerifiedChits(db: DB, movementId: string): boolean {
+  const docs = db.documents.filter((d) => d.movementId === movementId && d.ocr?.verified);
+  return docs.some((d) => d.docType === "Loading Chit") && docs.some((d) => d.docType === "Discharge Chit");
+}
+
+/**
+ * Derived – never stored – so billable state can never drift from exception, chit or approval state.
+ * A movement only becomes Billable once its status allows billing, both chits are verified and its driver log sheet is verified
+ * (see driver-logs.ts; legacy seed movements are exempt).
+ */
+/** Chits verified AND the movement's driver log sheet verified: "Pending Chits" / "Pending Driver Log" otherwise. */
+function evidenceStatus(m: Movement, db: DB): BillableStatus {
+  if (!hasVerifiedChits(db, m.id)) return "Pending Chits";
+  return hasVerifiedDriverLog(db, m) ? "Billable" : "Pending Driver Log";
+}
+
 export function billableStatus(m: Movement, db: DB): BillableStatus {
   if (unresolvedExceptionsFor(db, m.id).length > 0) return "Blocked – Exception";
   if (m.pendingApproval) return "Pending Approval";
   switch (m.status) {
     case "Completed":
-      return "Billable";
+      return evidenceStatus(m, db);
     case "Rejected":
-      return db.settings.billRejected ? "Billable" : "Non-billable";
+      if (!db.settings.billRejected) return "Non-billable";
+      return evidenceStatus(m, db);
     case "Damaged":
-      return db.settings.billDamaged ? "Billable" : "Non-billable";
+      if (!db.settings.billDamaged) return "Non-billable";
+      return evidenceStatus(m, db);
     default:
       return "Pending Completion";
   }

@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BarChart3,
+  ClipboardList,
   Banknote,
   Database,
   FileSpreadsheet,
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "exceptions", label: "Exceptions", href: "/exceptions", icon: AlertTriangle, description: "Reconciliation and exception queue" },
   { key: "evidence", label: "Chits & Evidence", href: "/evidence", icon: FileText, description: "Supporting documents and assisted extraction" },
   { key: "drivers", label: "Drivers & Roster", href: "/drivers", icon: Users, description: "Driver directory, roster and attendance", driverHref: "/drivers/roster" },
+  { key: "driver-logs", label: "Driver Logs", href: "/driver-logs", icon: ClipboardList, description: "Driver log sheets and missing logs" },
   { key: "payments", label: "Driver Payments", href: "/payments", icon: Banknote, description: "15-day pay drafts and approvals" },
   { key: "invoicing", label: "Invoicing", href: "/invoicing", icon: Receipt, description: "Monthly terminal invoice drafts" },
   { key: "fleet", label: "Fleet & Fuel", href: "/fleet", icon: Truck, description: "Prime movers, fuel and servicing" },

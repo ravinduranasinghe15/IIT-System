@@ -22,6 +22,7 @@ const ACTION_LABELS: Record<ActionKey, string> = {
   "exception.approve": "Approve material corrections",
   "evidence.upload": "Upload evidence documents",
   "evidence.verify": "Verify extracted evidence",
+  "driverlog.upload": "Upload driver log sheets",
   "driver.manage": "Manage drivers",
   "roster.edit": "Edit roster and leave",
   "roster.attendance": "Record attendance",

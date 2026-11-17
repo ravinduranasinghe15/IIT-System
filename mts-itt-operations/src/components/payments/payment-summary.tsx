@@ -34,7 +34,7 @@ export function PayRulesNote({
           <p className="text-slate">
             Pay unit mode: <span className="font-medium text-ink">{unitModeLabel(unitMode)}</span>. Rates: 20FT{" "}
             <span className="font-medium text-ink">{formatMoney(rates["20FT"], currency)}</span>, 40FT{" "}
-            <span className="font-medium text-ink">{formatMoney(rates["40FT"], currency)}</span> per unit. Only movements whose status is <span className="font-medium text-ink">Completed</span> and whose billable status is <span className="font-medium text-ink">Billable</span> are paid. All others are excluded and listed with reasons.
+            <span className="font-medium text-ink">{formatMoney(rates["40FT"], currency)}</span> per unit. Only movements whose status is <span className="font-medium text-ink">Completed</span> and whose billable status is <span className="font-medium text-ink">Billable</span> are paid. A movement becomes Billable only after its loading and discharge chits are both verified. All others are excluded and listed with reasons.
           </p>
           <p className="flex flex-wrap items-center gap-1 text-xs text-slate">
             <Info className="size-3.5" />

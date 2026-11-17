@@ -4,9 +4,9 @@ import type { Role } from "@/types/user";
 
 export const ROLE_ROUTES: Record<Role, string[]> = {
   Administrator: ["/"],
-  "Operations Manager": ["/dashboard", "/movements", "/terminal-imports", "/exceptions", "/evidence", "/drivers", "/fleet", "/reports", "/master-data"],
+  "Operations Manager": ["/dashboard", "/movements", "/terminal-imports", "/exceptions", "/evidence", "/drivers", "/driver-logs", "/fleet", "/reports", "/master-data"],
   "Operations Staff": ["/dashboard", "/movements", "/terminal-imports", "/evidence"],
-  Supervisor: ["/dashboard", "/movements", "/evidence", "/exceptions", "/drivers/roster"],
+  Supervisor: ["/dashboard", "/movements", "/evidence", "/exceptions", "/drivers", "/driver-logs"],
   "Finance Manager": ["/dashboard", "/payments", "/invoicing", "/reports", "/master-data/rates", "/master-data"],
   Driver: ["/dashboard", "/movements", "/drivers/roster"],
 };
@@ -32,6 +32,7 @@ export const ACTIONS = {
   "exception.approve": [A, OM],
   "evidence.upload": [A, OM, OS, SV],
   "evidence.verify": [A, OM, SV],
+  "driverlog.upload": [A, OM, SV],
   "driver.manage": [A, OM],
   "roster.edit": [A, OM],
   "roster.attendance": [A, OM, SV],
@@ -62,7 +63,7 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   Administrator: "Full access to every module, master data, settings and audit logs.",
   "Operations Manager": "Movements, terminal imports, exceptions (incl. approvals), drivers, roster, fleet and operational reports.",
   "Operations Staff": "Movement registration, terminal imports and document uploads.",
-  Supervisor: "Chit evidence, attendance recording and exception review.",
+  Supervisor: "Chit evidence, driver logs, driver directory and roster, attendance recording and exception review.",
   "Finance Manager": "Driver payments, invoices, rate master and financial reports.",
   Driver: "Own movements and own roster only. No financial information.",
 };

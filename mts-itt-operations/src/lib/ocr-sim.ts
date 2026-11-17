@@ -44,6 +44,12 @@ function shiftTime(iso: string, h: number): string {
   return new Date(ms).toISOString().slice(0, 16);
 }
 
+/** Registration plate of the movement's truck (chits show the plate, e.g. LY-5516), falling back to the stored id. */
+function truckPlate(m: Movement | null | undefined, db: DB): string {
+  if (!m?.primeMoverId) return "";
+  return db.primeMovers.find((p) => p.id === m.primeMoverId)?.regNo ?? m.primeMoverId;
+}
+
 /** Extraction result for a document. `linked` (if any) is the movement the values are read from. */
 export function simulateExtraction(doc: EvidenceDoc, db: DB): { fields: OcrField[]; sourceMovement: Movement | null; inferred: boolean } {
   const linked = doc.movementId ? (db.movements.find((m) => m.id === doc.movementId) ?? null) : null;
@@ -60,7 +66,7 @@ export function simulateExtraction(doc: EvidenceDoc, db: DB): { fields: OcrField
   if (isChit) {
     specs.push(
       ["containerNo", "Container Number", m?.containerNos.join(" / ") ?? "", 93 + (h % 6)],
-      ["truckNo", "Truck Number", m?.primeMoverId ?? "", 88 + ((h >> 3) % 9)],
+      ["truckNo", "Truck Number", truckPlate(m, db), 88 + ((h >> 3) % 9)],
       ["driver", "Driver Name", driverName, 82 + ((h >> 5) % 12)],
       ["terminal", "Terminal", (isDischarge ? m?.destinationTerminal : m?.sourceTerminal) ?? "", 95 + ((h >> 7) % 5)],
       ["datetime", "Date and Time", (isDischarge ? m?.dischargeAt : m?.loadingAt) ?? "", 84 + ((h >> 9) % 12)],
@@ -68,14 +74,14 @@ export function simulateExtraction(doc: EvidenceDoc, db: DB): { fields: OcrField
     );
   } else if (doc.docType === "Fuel Invoice") {
     specs.push(
-      ["truckNo", "Truck Number", m?.primeMoverId ?? "", 86 + (h % 10)],
+      ["truckNo", "Truck Number", truckPlate(m, db), 86 + (h % 10)],
       ["driver", "Driver Name", driverName, 78 + ((h >> 3) % 14)],
       ["datetime", "Date and Time", m?.loadingAt ?? "", 82 + ((h >> 5) % 14)],
     );
   } else {
     specs.push(
       ["driver", "Driver Name", driverName, 80 + (h % 14)],
-      ["truckNo", "Truck Number", m?.primeMoverId ?? "", 84 + ((h >> 3) % 12)],
+      ["truckNo", "Truck Number", truckPlate(m, db), 84 + ((h >> 3) % 12)],
       ["datetime", "Date and Time", m?.loadingAt ?? "", 80 + ((h >> 5) % 14)],
     );
   }
@@ -109,7 +115,7 @@ export function ledgerValueFor(key: string, m: Movement | null | undefined, doc:
     case "containerNo":
       return m.containerNos.join(" / ");
     case "truckNo":
-      return m.primeMoverId ?? "";
+      return truckPlate(m, db);
     case "driver":
       return m.driverId ? (db.drivers.find((d) => d.id === m.driverId)?.name ?? m.driverId) : "";
     case "terminal":

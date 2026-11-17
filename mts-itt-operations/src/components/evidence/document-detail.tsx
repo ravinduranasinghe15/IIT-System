@@ -14,6 +14,7 @@ import { Field } from "@/components/shared/field";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { NativeSelect } from "@/components/shared/native-select";
 import { KeyValue } from "@/components/shared/section-card";
+import { LogCoverage } from "./log-coverage";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
@@ -146,7 +147,7 @@ export function DocumentDetailDialog({ doc, onClose }: { doc: EvidenceDoc | null
                 </Field>
                 <div>
                   <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate">Linked movement</div>
-                  <LinkControl doc={doc} canEdit={canUpload} />
+                  {doc.docType === "Driver Log Sheet" && doc.driverLog ? <LogCoverage doc={doc} /> : <LinkControl doc={doc} canEdit={canUpload} />}
                 </div>
               </TabsContent>
               <TabsContent value="history" className="pt-3">
