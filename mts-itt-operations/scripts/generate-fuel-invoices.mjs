@@ -1,6 +1,6 @@
 // Generates the sample fuel-station invoice file (CSV) and the matching hard-coded data module.
 //   node scripts/generate-fuel-invoices.mjs
-// Invoices are derived from the Track My Car sample so the reconciliation tells a clear story:
+// Invoices are derived from the Track My Car Trips sample so the reconciliation tells a clear story:
 // most trucks within 5%, three flagged (PM-004 +9%, PM-007 +14%, PM-008 -8%).
 // PM-001 is short by exactly the sample receipt (120 L, 13 Nov): adding that receipt closes its gap.
 import fs from "node:fs";
@@ -8,14 +8,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const gpsCsv = fs.readFileSync(path.join(root, "public", "documents", "sample-trackmycar.csv"), "utf8").trim().split(/\r?\n/).slice(1);
+import XLSX from "xlsx";
+// GPS litres are estimated from the Trips export's distance (the export has no fuel readings): km x 0.38 L/km
+const REGS = ["LY-5516", "LY-5519", "LY-5520", "LY-5523", "LY-5525", "LY-5601", "LY-6178", "LY-6181", "LY-5321"];
+const tripsWb = XLSX.readFile(path.join(root, "public", "documents", "13.11.2026_Trips-track-my-car.xlsx"));
+const tripRows = XLSX.utils.sheet_to_json(tripsWb.Sheets[tripsWb.SheetNames[0]], { header: 1, raw: false, defval: "" });
 const gps = {};
 const reg = {};
-for (const line of gpsCsv) {
-  const c = line.split(",");
-  gps[c[0]] = (gps[c[0]] ?? 0) + Number(c[4]);
-  reg[c[0]] = c[1];
-}
+REGS.forEach((r, i) => {
+  const id = `PM-${String(i + 1).padStart(3, "0")}`;
+  reg[id] = r;
+  const km = tripRows.filter((r2) => r2[0] === r).reduce((s, r2) => s + Number.parseFloat(r2[1]), 0);
+  gps[id] = Math.round(km * 0.38 * 10) / 10;
+});
 
 const FACTOR = { "PM-001": 1.01, "PM-002": 1.02, "PM-003": 1.035, "PM-004": 1.09, "PM-005": 0.99, "PM-006": 1.01, "PM-007": 1.14, "PM-008": 0.92, "PM-009": 1.005 };
 const SAMPLE_RECEIPT_LITRES = 120; // PM-001, added by hand via the sample receipt

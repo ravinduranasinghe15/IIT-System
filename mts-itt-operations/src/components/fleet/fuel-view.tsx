@@ -56,7 +56,7 @@ export function FuelView() {
         description="GPS (Track My Car) fuel vs fuel-station records. Originals are preserved; reviews are stored separately."
         actions={
           <>
-            <Button variant="outline" render={<a href="/documents/sample-trackmycar.csv" download />}>
+            <Button variant="outline" render={<a href="/documents/13.11.2026_Trips-track-my-car.xlsx" download />}>
               <Download /> Sample GPS file
             </Button>
             <Button variant="outline" render={<a href={DEMO_FUEL_FILE_HREF} download />}>

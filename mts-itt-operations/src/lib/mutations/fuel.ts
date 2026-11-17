@@ -68,6 +68,8 @@ export function addManualFuel(d: DB, input: ManualFuelInput): FuelRecord {
 export interface GpsImportInput {
   fileName: string;
   provider?: string;
+  /** Extra text added to every record (e.g. that litres are estimated from distance) */
+  note?: string;
   rows: GpsRowResult[];
 }
 
@@ -91,7 +93,7 @@ export function importGpsRows(d: DB, input: GpsImportInput): GpsImport {
   };
   d.gpsImports.unshift(imp);
   for (const r of rows) {
-    const bits = [r.idleMin !== null ? `Idle ${r.idleMin} min` : null, r.stops !== null ? `${r.stops} stops` : null].filter(Boolean);
+    const bits = [input.note ?? null, r.idleMin !== null ? `Idle ${r.idleMin} min` : null, r.stops !== null ? `${r.stops} stops` : null].filter(Boolean);
     d.fuelRecords.push({
       id: nextId(d, "fuel", "FR-", 4),
       vehicleId: r.vehicleId as string,

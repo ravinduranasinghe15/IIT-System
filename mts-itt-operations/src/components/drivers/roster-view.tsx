@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarCheck, Check, ChevronLeft, ChevronRight, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
 import { SearchInput } from "@/components/shared/search-input";
@@ -12,9 +12,11 @@ import { useAuth } from "@/contexts/auth-context";
 import { addDays, realToday, eachDay, formatDay } from "@/lib/date-utils";
 import type { Driver, RosterEntry } from "@/types/driver";
 import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calendar";
+import { RosterMonth, addMonths, monthStart } from "./roster-month";
 import { AttendanceDialog } from "./attendance-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
+import { Rows3 } from "lucide-react";
 import { SHIFT_HOURS, checkRosterRules, type WorkShift } from "@/lib/roster-rules";
 import { StatusBadge } from "@/components/shared/status-badge";
 
@@ -25,6 +27,9 @@ export function RosterView() {
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(addDays(today, 6));
   const [pickDates, setPickDates] = useState(false);
+  const [view, setView] = useState<"grid" | "calendar">("grid");
+  const [month, setMonth] = useState(monthStart(today));
+  const [selDate, setSelDate] = useState(today);
   const [showRules, setShowRules] = useState(false);
   const [q, setQ] = useState("");
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
@@ -194,12 +199,39 @@ export function RosterView() {
       )}
 
       <SectionCard
-        title={`${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM yyyy")}`}
+        title={view === "calendar" ? formatDay(month, "MMMM yyyy") : `${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM yyyy")}`}
         description={canEdit || canAttend ? "Click a cell to change the shift, record attendance or replace a driver." : "Read-only view."}
         bodyClassName="p-0"
         actions={
           <>
             <SearchInput value={q} onChange={setQ} placeholder="Find driver…" className="hidden w-40 sm:block" />
+            <div className="flex overflow-hidden rounded-lg border text-xs">
+              {([["grid", "Grid", Rows3], ["calendar", "Calendar", CalendarDays]] as const).map(([k, label, Icon]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setView(k)}
+                  aria-pressed={view === k}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 font-medium ${view === k ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted"}`}
+                >
+                  <Icon className="size-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+            {view === "calendar" ? (
+              <>
+                <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => setMonth(addMonths(month, -1))}>
+                  <ChevronLeft />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setMonth(monthStart(today)); setSelDate(today); }}>
+                  Today
+                </Button>
+                <Button variant="outline" size="icon-sm" aria-label="Next month" onClick={() => setMonth(addMonths(month, 1))}>
+                  <ChevronRight />
+                </Button>
+              </>
+            ) : (
+              <>
             <div className="flex overflow-hidden rounded-lg border text-xs">
               {[7, 14].map((d) => (
                 <button
@@ -224,10 +256,12 @@ export function RosterView() {
             <Button variant="ghost" size="sm" onClick={() => setPickDates((v) => !v)}>
               Pick dates
             </Button>
+              </>
+            )}
           </>
         }
       >
-        {pickDates && (
+        {view === "grid" && pickDates && (
           <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5 text-sm">
             <label className="flex items-center gap-2 text-slate">
               From
@@ -242,6 +276,18 @@ export function RosterView() {
         )}
         {drivers.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate">No drivers match.</div>
+        ) : view === "calendar" ? (
+          <RosterMonth
+            month={month}
+            selected={selDate}
+            onSelect={(d) => {
+              setSelDate(d);
+              if (d.slice(0, 7) !== month.slice(0, 7)) setMonth(monthStart(d));
+            }}
+            drivers={drivers}
+            roster={roster}
+            onDriverClick={canEdit || canAttend ? (driver, date, entry) => setCell({ driver, date, entry }) : undefined}
+          />
         ) : (
           <RosterCalendar
             start={start}
@@ -252,13 +298,13 @@ export function RosterView() {
             onCellClick={canEdit || canAttend ? (driver, date, entry) => setCell({ driver, date, entry }) : undefined}
           />
         )}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
+        {view === "grid" && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Present</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Late</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-red-500" />Absent</span>
           <span>&ldquo;→ DR-xxx&rdquo; = another driver took the shift</span>
           <span>Red outline = truck double-booked</span>
-        </div>
+        </div>}
       </SectionCard>
 
       {/* Rules: one line when everything is fine */}

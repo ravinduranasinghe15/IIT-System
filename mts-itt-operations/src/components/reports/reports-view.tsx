@@ -28,6 +28,7 @@ import { ReportFiltersBar } from "./report-filters";
 import { ReportExport } from "./report-export";
 import { AnalyticsCharts, ReportChart } from "./report-charts";
 import { ReportNotes, ReportSummary, ReportTable } from "./report-table";
+import { IttAnalysisReport } from "./itt-analysis-report";
 
 const ICONS: Record<ReportType, LucideIcon> = {
   daily: CalendarDays,
@@ -50,6 +51,7 @@ export function ReportsView() {
   const canFinancial = role === "Administrator" || role === "Finance Manager";
   const allowed = can("reports.view");
 
+  const [mode, setMode] = useState<"standard" | "itt">("itt");
   const [type, setType] = useState<ReportType>("daily");
   const [filters, setFilters] = useState<ReportFilters>(defaultFilters);
 
@@ -75,9 +77,19 @@ export function ReportsView() {
     <div className="space-y-4">
       <PageHeader
         title="Reports & Analytics"
-        description="Twelve operational and financial reports with filters, charts and a download option (Excel, CSV or PDF) for whatever filters are applied."
-        actions={<ReportExport type={activeType} filters={filters} result={result} />}
+        description="The MTS ITT analysis dashboard plus twelve operational and financial reports, generated for any day, week, month or custom range, with Excel, CSV or PDF download."
+        actions={mode === "standard" ? <ReportExport type={activeType} filters={filters} result={result} /> : undefined}
       />
+
+      <div className="flex w-fit overflow-hidden rounded-lg border text-sm">
+        {([["itt", "ITT analysis (MTS format)"], ["standard", "Standard reports"]] as const).map(([k, label]) => (
+          <button key={k} type="button" aria-pressed={mode === k} onClick={() => setMode(k)} className={cn("px-4 py-2 font-medium", mode === k ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted")}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "itt" ? <IttAnalysisReport /> : <>
 
       <div className="flex items-start gap-2 rounded-lg border border-brand/20 bg-brand/5 px-3 py-2 text-xs text-slate">
         <Clock className="mt-0.5 size-3.5 shrink-0 text-brand" />
@@ -140,6 +152,7 @@ export function ReportsView() {
       <ReportNotes notes={result.notes} />
 
       <AnalyticsCharts data={analytics} canFinancial={canFinancial} currency={db.settings.currency} />
+      </>}
     </div>
   );
 }
