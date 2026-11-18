@@ -131,6 +131,12 @@ export function ledgerValueFor(key: string, m: Movement | null | undefined, doc:
 
 /** Normalised comparison used for highlighting (driver ids from older seed rows are treated as equal to the driver's name). */
 export function sameValue(a: string, b: string, key: string, db: DB): boolean {
+  if (key === "datetime") {
+    // chit times are written by hand: within 30 minutes of the terminal time counts as the same
+    const ta = Date.parse(a);
+    const tb = Date.parse(b);
+    if (Number.isFinite(ta) && Number.isFinite(tb)) return Math.abs(ta - tb) <= 30 * 60000;
+  }
   const n = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (key === "driver") {
     const asName = (s: string) => db.drivers.find((d) => d.id === s)?.name ?? s;

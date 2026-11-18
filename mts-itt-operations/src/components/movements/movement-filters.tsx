@@ -11,7 +11,7 @@ import { EMPTY_FILTERS, type MovementFilters } from "@/hooks/use-movements";
 import { MOVEMENT_STATUSES } from "@/types/movement";
 import { TERMINAL_CODES } from "@/types/terminal";
 
-const BILLABLE = ["Billable", "Blocked – Exception", "Pending Approval", "Pending Chits", "Pending Driver Log", "Pending Completion", "Non-billable"];
+const BILLABLE = ["Billable", "Blocked – Exception", "Pending Approval", "Pending Chits", "Pending Driver Log", "Blocked – Mismatch", "Pending Completion", "Non-billable"];
 
 export function MovementFiltersBar({ filters, onChange }: { filters: MovementFilters; onChange: (f: MovementFilters) => void }) {
   const { db } = useApp();

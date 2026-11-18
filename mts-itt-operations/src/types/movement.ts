@@ -18,6 +18,7 @@ export type BillableStatus =
   | "Pending Completion"
   | "Pending Chits"
   | "Pending Driver Log"
+  | "Blocked – Mismatch"
   | "Non-billable";
 
 export interface MovementEvent {
@@ -38,6 +39,8 @@ export interface Movement {
   primeMoverId: string | null;
   trailerId: string | null;
   driverId: string | null;
+  /** Where the driver came from: the roster (default for imports) or the verified driver log sheet (wins). Absent = entered by hand. */
+  driverSource?: "roster" | "driver log" | "manual";
   /** Local wall-clock "yyyy-MM-ddTHH:mm" in the configured timezone */
   loadingAt: string | null;
   dischargeAt: string | null;

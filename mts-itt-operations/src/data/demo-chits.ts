@@ -452,7 +452,7 @@ export interface DemoDriverLog {
   driverId: string;
   primeMoverId: string;
   date: string;
-  shift: "Morning" | "Afternoon" | "Night";
+  shift: "Morning" | "Night";
   fields: OcrField[];
 }
 export const DEMO_DRIVER_LOG_DIR = "/documents/driver-logs/";
@@ -500,9 +500,15 @@ export const DEMO_DRIVER_LOG: DemoDriverLog = {
       "confidence": 92
     },
     {
+      "key": "trip3",
+      "label": "Trip 3",
+      "value": "HASU5167002 | 40 | SAGT > JCT",
+      "confidence": 91
+    },
+    {
       "key": "tripTotal",
       "label": "Trips written (circled)",
-      "value": "2",
+      "value": "3",
       "confidence": 91
     }
   ]

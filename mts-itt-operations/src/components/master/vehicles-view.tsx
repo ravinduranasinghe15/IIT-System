@@ -11,7 +11,8 @@ import { NativeSelect } from "@/components/shared/native-select";
 import { useApp } from "@/contexts/app-context";
 import { useLookups } from "@/hooks/use-lookups";
 import { setPrimeMoverStatus } from "@/lib/mutations/master";
-import { formatDate } from "@/lib/date-utils";
+import { formatDate, realToday } from "@/lib/date-utils";
+import { driverOnTruck } from "@/lib/roster-rules";
 import type { PrimeMover } from "@/types/vehicle";
 import { MasterShell } from "./master-shell";
 import { VehicleFormDialog } from "./vehicle-form-dialog";
@@ -29,9 +30,9 @@ export function VehiclesView() {
     return db.primeMovers.filter(
       (p) =>
         (!status || p.status === status) &&
-        (!s || `${p.id} ${p.regNo} ${p.make} ${p.model} ${p.trailerId ?? ""} ${lk.driverName(p.driverId)}`.toLowerCase().includes(s)),
+        (!s || `${p.id} ${p.regNo} ${p.make} ${p.model} ${p.trailerId ?? ""}`.toLowerCase().includes(s)),
     );
-  }, [db.primeMovers, q, status, lk]);
+  }, [db.primeMovers, q, status]);
 
   const columns: Column<PrimeMover>[] = [
     { key: "id", header: "ID", cell: (p) => <span className="font-semibold text-navy">{p.id}</span>, sortValue: (p) => p.id },
@@ -40,7 +41,7 @@ export function VehiclesView() {
     { key: "year", header: "Year", align: "right", cell: (p) => p.year, sortValue: (p) => p.year },
     { key: "type", header: "Type", className: "text-slate", cell: (p) => p.vehicleType },
     { key: "trailer", header: "Trailer", cell: (p) => (p.trailerId ? `${p.trailerId} · ${lk.trailer(p.trailerId)?.regNo ?? ""}` : <span className="text-slate">Unassigned</span>) },
-    { key: "driver", header: "Driver", cell: (p) => (p.driverId ? lk.driverName(p.driverId) : <span className="text-slate">Unassigned</span>), sortValue: (p) => lk.driverName(p.driverId) },
+    { key: "driver", header: "Driver today", cell: (p) => { const d = driverOnTruck(db, p.id, realToday()); return d ? lk.driverName(d) : <span className="text-slate">Not rostered</span>; } },
     { key: "svc", header: "Next service", cell: (p) => formatDate(p.nextServiceDate), sortValue: (p) => p.nextServiceDate },
     { key: "status", header: "Status", cell: (p) => <StatusBadge status={p.status} />, sortValue: (p) => p.status },
     {

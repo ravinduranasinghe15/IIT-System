@@ -9,7 +9,6 @@ import type { Driver, RosterEntry } from "@/types/driver";
 
 const CHIP: Record<WorkShift, { letter: string; cls: string }> = {
   Morning: { letter: "M", cls: "bg-sky-100 text-sky-800" },
-  Afternoon: { letter: "A", cls: "bg-orange-100 text-orange-800" },
   Night: { letter: "N", cls: "bg-slate-800 text-white" },
 };
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -107,7 +106,6 @@ export function RosterMonth({
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
         <span><span className={cn("mr-1 rounded px-1 font-semibold", CHIP.Morning.cls)}>M</span>Morning</span>
-        <span><span className={cn("mr-1 rounded px-1 font-semibold", CHIP.Afternoon.cls)}>A</span>Afternoon</span>
         <span><span className={cn("mr-1 rounded px-1 font-semibold", CHIP.Night.cls)}>N</span>Night</span>
         <span><span className="mr-1 rounded bg-amber-100 px-1 font-semibold text-amber-800">L</span>On leave</span>
         <span>Number = drivers on that shift (absent excluded). Click a day for the drivers.</span>

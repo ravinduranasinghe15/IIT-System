@@ -71,15 +71,14 @@ export interface IttAnalysis {
   pickupShare: { name: string; value: number }[];
 }
 
-export function buildIttAnalysis(db: DB, from: string, to: string, canFinancial: boolean, focus: TerminalCode = "SAGT"): IttAnalysis {
+export function buildIttAnalysis(db: DB, from: string, to: string, canFinancial: boolean, focus: TerminalCode = "SAGT", shift: "" | "Morning" | "Night" = ""): IttAnalysis {
   const dates = eachDay(from, to);
   const days = Math.max(1, dates.length);
-  const infos = filterMovements(db, { ...defaultFilters(), from, to }).filter((i) => i.m.status !== "Pending");
+  const infos = filterMovements(db, { ...defaultFilters(), from, to, shift }).filter((i) => i.m.status !== "Pending");
 
   const bySource: Record<string, number> = { CWIT: 0, SAGT: 0, CICT: 0 };
   for (const { m } of infos) bySource[m.sourceTerminal] = (bySource[m.sourceTerminal] ?? 0) + 1;
 
-  const regOf = new Map(db.primeMovers.map((p) => [p.id, p.regNo]));
   const driverById = new Map(db.drivers.map((d) => [d.id, d]));
 
   // ---- per day
@@ -124,7 +123,7 @@ export function buildIttAnalysis(db: DB, from: string, to: string, canFinancial:
         regNo: p.regNo,
         trips: mine.length,
         perDay: r2(mine.length / days),
-        perShift: r2(mine.length / (days * 2)),
+        perShift: r2(mine.length / (days * (shift ? 1 : 2))),
         c20: mine.filter((i) => i.m.containerSize === "20FT").length,
         c40: mine.filter((i) => i.m.containerSize === "40FT").length,
         gpsKm: r1(f.gpsKm),
@@ -148,12 +147,20 @@ export function buildIttAnalysis(db: DB, from: string, to: string, canFinancial:
     return { name: s, journeys: list.length, containers: list.reduce((n, i) => n + Math.max(1, i.m.containerNos.length), 0) };
   });
 
-  // ---- drivers (permanent = the driver assigned to that truck; otherwise a temporary / relief driver)
+  // ---- drivers (drivers are not tied to a truck: "permanent" = the truck is the one the driver drove most in the period, otherwise temporary)
+  const tripsOn = new Map<string, Map<string, number>>();
+  for (const { m } of infos) {
+    if (!m.driverId || !m.primeMoverId) continue;
+    const t = tripsOn.get(m.driverId) ?? new Map<string, number>();
+    t.set(m.primeMoverId, (t.get(m.primeMoverId) ?? 0) + 1);
+    tripsOn.set(m.driverId, t);
+  }
+  const mainTruck = (id: string) => [...(tripsOn.get(id) ?? new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
   const drv = new Map<string, { trips: number; days: Set<string>; permTrips: number }>();
   for (const { m, day } of infos) {
     if (!m.driverId) continue;
     const d = driverById.get(m.driverId);
-    const perm = !!d && !!m.primeMoverId && d.primeMoverId === m.primeMoverId;
+    const perm = !!d && !!m.primeMoverId && mainTruck(m.driverId) === m.primeMoverId;
     const o = drv.get(m.driverId) ?? { trips: 0, days: new Set<string>(), permTrips: 0 };
     o.trips += 1;
     o.days.add(day);

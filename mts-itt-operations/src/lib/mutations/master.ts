@@ -102,23 +102,6 @@ export function assignTrailer(db: DB, pmId: string, trailerId: string | null) {
   pm.trailerId = trailerId;
 }
 
-/** Make `driverId` the driver of `pmId` (or detach when null); keeps Driver.primeMoverId in sync. */
-export function assignDriver(db: DB, pmId: string, driverId: string | null) {
-  const pm = db.primeMovers.find((p) => p.id === pmId);
-  if (!pm) return;
-  db.drivers.forEach((d) => {
-    if (d.primeMoverId === pmId && d.id !== driverId) d.primeMoverId = null;
-  });
-  if (driverId) {
-    db.primeMovers.forEach((p) => {
-      if (p.id !== pmId && p.driverId === driverId) p.driverId = null;
-    });
-    const d = db.drivers.find((x) => x.id === driverId);
-    if (d) d.primeMoverId = pmId;
-  }
-  pm.driverId = driverId;
-}
-
 /* -------------------------------------------------------------- Prime movers */
 
 export type PrimeMoverInput = Omit<PrimeMover, "id" | "odometerKm"> & { odometerKm?: number };
@@ -129,22 +112,21 @@ export function savePrimeMover(db: DB, input: PrimeMoverInput, id: string, isNew
   if (db.primeMovers.some((p) => p.id !== id && p.regNo.toUpperCase() === reg)) return fail(`Registration ${reg} is already registered to another prime mover.`);
   if (db.trailers.some((t) => t.regNo.toUpperCase() === reg)) return fail(`Registration ${reg} is already used by a trailer.`);
 
-  const { trailerId, driverId, ...rest } = input;
+  const { trailerId, ...rest } = input;
   let pm = db.primeMovers.find((p) => p.id === id);
   if (isNew) {
-    pm = { id, trailerId: null, driverId: null, odometerKm: input.odometerKm ?? 0, ...rest, regNo: reg };
+    pm = { id, trailerId: null, odometerKm: input.odometerKm ?? 0, ...rest, regNo: reg };
     db.primeMovers.push(pm);
   } else {
     if (!pm) return fail("Prime mover not found.");
     Object.assign(pm, { ...rest, regNo: reg, odometerKm: input.odometerKm ?? pm.odometerKm });
   }
   assignTrailer(db, id, trailerId);
-  assignDriver(db, id, driverId);
   logAudit(db, {
     action: isNew ? "Prime Mover Created" : "Prime Mover Updated",
     module: "Master Data",
     entityId: id,
-    description: `Prime mover ${id} (${reg}) ${isNew ? "created" : "updated"}: ${input.make} ${input.model} ${input.year}, ${input.status}, trailer ${trailerId ?? "none"}, driver ${driverId ?? "none"}.`,
+    description: `Prime mover ${id} (${reg}) ${isNew ? "created" : "updated"}: ${input.make} ${input.model} ${input.year}, ${input.status}, trailer ${trailerId ?? "none"}.`,
   });
   return { ok: true, id };
 }

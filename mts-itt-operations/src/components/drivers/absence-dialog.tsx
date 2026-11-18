@@ -39,6 +39,8 @@ export function AbsenceDialog({
 
   useEffect(() => {
     if (!open) return;
+    // reset the form each time the dialog opens
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDate(initialDate ?? realToday());
     setDriverId(initialDriverId ?? "");
     setReason("");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Clock, Container, Route, Truck, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -18,6 +18,8 @@ import {
   terminalStats,
   todayStats,
 } from "@/lib/stats";
+import { ShiftFilter, type ShiftValue } from "@/components/shared/shift-filter";
+import { filterByShift } from "@/lib/driver-logs";
 import { MovementChart } from "./movement-chart";
 import { TerminalChart } from "./terminal-chart";
 import { ContainerChart } from "./container-chart";
@@ -37,23 +39,24 @@ export function DashboardView() {
   const router = useRouter();
   const today = demoToday();
 
-  const scoped = useMemo(() => (isDriver ? db.movements.filter((m) => m.driverId === driverId) : db.movements), [db.movements, isDriver, driverId]);
+  const [shift, setShift] = useState<ShiftValue>("");
+  const scoped = useMemo(() => filterByShift(isDriver ? db.movements.filter((m) => m.driverId === driverId) : db.movements, shift), [db.movements, isDriver, driverId, shift]);
   const stats = useMemo(() => todayStats(db, today, scoped), [db, today, scoped]);
   const trend = useMemo(() => dailyTrend(db, today, 14, scoped), [db, today, scoped]);
   const tStats = useMemo(() => terminalStats(db, today, 14, scoped), [db, today, scoped]);
   const dist = useMemo(() => containerDistribution(inWindow(db, scoped, today, 14)), [db, today, scoped]);
-  const fleet = useMemo(() => fleetStatus(db, today), [db, today]);
+  const fleet = useMemo(() => fleetStatus(db, today, scoped), [db, today, scoped]);
   const util = useMemo(() => fleetUtilisation(db, today), [db, today]);
   const recent = useMemo(() => recentMovements(scoped, 8), [scoped]);
 
-  const description = `Operational day ${formatDay(today, "EEE dd MMM yyyy")} (07:00 → 07:00)${isDriver ? ` · showing your movements only, ${user.name}` : ""}`;
+  const description = `Operational day ${formatDay(today, "EEE dd MMM yyyy")} (07:00 → 07:00)${shift ? ` · ${shift} shift only` : ""}${isDriver ? ` · showing your movements only, ${user.name}` : ""}`;
 
   if (role === "CEO") return <CeoDashboard />;
 
   if (isDriver) {
     return (
       <div>
-        <PageHeader title="My Dashboard" description={description} />
+        <PageHeader title="My Dashboard" description={description} actions={<ShiftFilter value={shift} onChange={setShift} />} />
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="My Movements Today" value={stats.total} hint="Journeys this operational day" icon={Route} tone="navy" onClick={() => router.push("/movements")} />
           <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} tone="green" />
@@ -75,7 +78,7 @@ export function DashboardView() {
 
   return (
     <div>
-      <PageHeader title="Operations Dashboard" description={description} />
+      <PageHeader title="Operations Dashboard" description={description} actions={<ShiftFilter value={shift} onChange={setShift} />} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
         <StatCard label="Movements Today" value={stats.total} hint="Journeys" icon={Route} tone="navy" onClick={() => router.push("/movements")} />
         <StatCard label="Completed" value={stats.completed} hint="Today" icon={CheckCircle2} tone="green" />

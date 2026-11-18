@@ -70,7 +70,7 @@ export function EvidenceView() {
       verified: db.documents.filter((d) => ocrState(d) === "Verified").length,
       missing,
     };
-  }, [db.documents, db.movements]);
+  }, [db]);
 
   const buildUrl = (next: { doc?: string | null; movement?: string | null }) => {
     const sp = new URLSearchParams();

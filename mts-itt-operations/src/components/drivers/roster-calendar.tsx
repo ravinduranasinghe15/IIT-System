@@ -19,12 +19,11 @@ import type { AttendanceStatus, Driver, RosterEntry, RosterShift } from "@/types
 
 const SHIFT_STYLE: Record<RosterShift, string> = {
   Morning: "bg-sky-50 text-sky-800 ring-sky-600/20",
-  Afternoon: "bg-orange-50 text-orange-800 ring-orange-600/20",
   Night: "bg-slate-800 text-white ring-slate-900/30",
   Off: "bg-slate-50 text-slate-400 ring-slate-300/50",
   Leave: "bg-amber-50 text-amber-800 ring-amber-600/20",
 };
-const SHIFT_LABEL: Record<RosterShift, string> = { Morning: "Morning", Afternoon: "Afternoon", Night: "Night", Off: "Off", Leave: "Leave" };
+const SHIFT_LABEL: Record<RosterShift, string> = { Morning: "Morning", Night: "Night", Off: "Off", Leave: "Leave" };
 const ATT_DOT: Record<AttendanceStatus, string> = { Present: "bg-emerald-500", Late: "bg-amber-500", Absent: "bg-red-500", Scheduled: "bg-transparent" };
 
 export const isWorkingShift = (s: RosterShift) => isWorkShift(s);
@@ -58,7 +57,7 @@ export function RosterCalendar({
           const absent = list.filter((r) => r.attendance === "Absent").length;
           return { drivers: list.length - absent, absent, movers: new Set(list.filter((r) => r.attendance !== "Absent" && r.primeMoverId).map((r) => r.primeMoverId)).size };
         };
-        return { date, Morning: of("Morning"), Afternoon: of("Afternoon"), Night: of("Night") };
+        return { date, Morning: of("Morning"), Night: of("Night") };
       }),
     [dates, roster],
   );
@@ -80,12 +79,12 @@ export function RosterCalendar({
             <tr>
               <th className="sticky left-0 z-20 border-b bg-card px-3 py-1.5 text-left text-xs font-medium text-ink">Drivers on duty</th>
               {coverage.map((c) => {
-                const total = c.Morning.drivers + c.Afternoon.drivers + c.Night.drivers;
+                const total = c.Morning.drivers + c.Night.drivers;
                 const gap = WORK_SHIFTS.some((k) => c[k].drivers === 0);
                 return (
                   <td
                     key={c.date}
-                    title={`Morning ${c.Morning.drivers} · Afternoon ${c.Afternoon.drivers} · Night ${c.Night.drivers}${gap ? " – a shift has no driver" : ""}`}
+                    title={`Morning ${c.Morning.drivers} · Night ${c.Night.drivers}${gap ? " – a shift has no driver" : ""}`}
                     className={cn("border-b px-1 py-1 text-center", gap && "bg-red-50", c.date === today && !gap && "bg-brand/5")}
                   >
                     <div className={cn("text-sm font-semibold tabular-nums", gap ? "text-danger" : "text-ink")}>{total}</div>
@@ -199,11 +198,11 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
     >
       <form id="roster-cell-form" onSubmit={submit} className="space-y-3">
         <Field label="Shift">
-          <Controller control={control} name="shift" render={({ field }) => <NativeSelect disabled={!canEdit} value={field.value} onValueChange={field.onChange} options={[{ value: "Morning", label: `Morning (${SHIFT_HOURS.Morning.range})` }, { value: "Afternoon", label: `Afternoon (${SHIFT_HOURS.Afternoon.range})` }, { value: "Night", label: `Night (${SHIFT_HOURS.Night.range}, next day)` }, "Off", "Leave"]} />} />
+          <Controller control={control} name="shift" render={({ field }) => <NativeSelect disabled={!canEdit} value={field.value} onValueChange={field.onChange} options={[{ value: "Morning", label: `Morning (${SHIFT_HOURS.Morning.range})` }, { value: "Night", label: `Night (${SHIFT_HOURS.Night.range}, ends next day)` }, "Off", "Leave"]} />} />
         </Field>
         {working && (
           <>
-            <Field label="Prime mover" hint={driver.primeMoverId ? `${driver.name} drives only his assigned truck (${driver.primeMoverId}).` : "Relief driver: covers the truck of the driver he replaces."}>
+            <Field label="Prime mover" hint="Any truck can be chosen; a truck has only one driver per shift.">
               <Controller
                 control={control}
                 name="primeMoverId"
@@ -213,7 +212,7 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
                     value={field.value}
                     onValueChange={field.onChange}
                     placeholder="No prime mover"
-                    options={db.primeMovers.filter((p) => !driver.primeMoverId || entry?.coveringFor || p.id === driver.primeMoverId).map((p) => ({ value: p.id, label: `${p.id} · ${p.regNo}${p.status !== "Active" ? ` – ${p.status}` : ""}` }))}
+                    options={db.primeMovers.map((p) => ({ value: p.id, label: `${p.id} · ${p.regNo}${p.status !== "Active" ? ` – ${p.status}` : ""}` }))}
                   />
                 )}
               />

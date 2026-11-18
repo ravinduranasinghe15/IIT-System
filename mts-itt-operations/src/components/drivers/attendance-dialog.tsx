@@ -35,7 +35,7 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
   const rows = useMemo(
     () =>
       db.roster
-        .filter((r) => r.date === date && (r.shift === "Morning" || r.shift === "Afternoon" || r.shift === "Night"))
+        .filter((r) => r.date === date && (r.shift === "Morning" || r.shift === "Night"))
         .sort((a, b) => a.shift.localeCompare(b.shift) || a.driverId.localeCompare(b.driverId)),
     [db.roster, date],
   );

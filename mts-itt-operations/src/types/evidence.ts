@@ -26,7 +26,7 @@ export interface DriverLogMeta {
   primeMoverId: string | null;
   /** yyyy-MM-dd – start date of the shift (a night shift ends 07:00 next day) */
   date: string;
-  shift: "Morning" | "Afternoon" | "Night";
+  shift: "Morning" | "Night";
 }
 
 export interface EvidenceDoc {

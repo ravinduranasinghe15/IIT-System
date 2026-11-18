@@ -1,13 +1,13 @@
 import type { DB, Settings } from "@/types/db";
 import { DEFAULT_TIMEZONE, OP_DAY_START_HOUR } from "@/lib/date-utils";
 import { MOCK_CONTAINER_TYPES, MOCK_ROUTES, MOCK_TERMINALS } from "./mock-terminals";
-import { MOCK_PRIME_MOVERS, MOCK_TRAILERS } from "./mock-vehicles";
+import { MOCK_PRIME_MOVERS, MOCK_SERVICE_RECORDS, MOCK_TRAILERS } from "./mock-vehicles";
 import { MOCK_DRIVERS, MOCK_USERS, buildRoster } from "./mock-drivers";
 import { DEFAULT_MAPPINGS } from "./mock-imports";
 import { buildRates } from "./mock-invoices";
 import { realToday } from "@/lib/date-utils";
 
-export const DB_VERSION = 14;
+export const DB_VERSION = 20;
 
 export const DEFAULT_SETTINGS: Settings = {
   timezone: DEFAULT_TIMEZONE,
@@ -55,7 +55,7 @@ export function createSeedDB(): DB {
     rates: buildRates(),
     fuelRecords: [],
     gpsImports: [],
-    serviceRecords: [],
+    serviceRecords: structuredClone(MOCK_SERVICE_RECORDS),
     fuelReviews: [],
     users: structuredClone(MOCK_USERS),
     audit: [],

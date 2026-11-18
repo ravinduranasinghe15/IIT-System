@@ -276,7 +276,6 @@ export function MovementForm({
                     const pm = db.primeMovers.find((p) => p.id === v);
                     if (pm) {
                       if (!form.getValues("trailerId") && pm.trailerId) setValue("trailerId", pm.trailerId);
-                      if (!form.getValues("driverId") && pm.driverId) setValue("driverId", pm.driverId);
                     }
                   }}
                   placeholder="Not recorded"

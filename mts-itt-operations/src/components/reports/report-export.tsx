@@ -23,6 +23,7 @@ export function filterSummary(type: ReportType, f: ReportFilters, db: DB): [stri
   if (on("route")) out.push(["Route", f.route.replace("-", " → ")]);
   if (on("size")) out.push(["Container size", f.size]);
   if (on("status")) out.push(["Movement status", f.status]);
+  if (on("shift")) out.push(["Shift", f.shift === "Morning" ? "Morning (07:00–19:00)" : "Night (19:00–07:00)"]);
   return out;
 }
 

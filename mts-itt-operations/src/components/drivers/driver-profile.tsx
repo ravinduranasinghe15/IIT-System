@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Pencil, Phone, ShieldAlert, Truck, UserCog } from "lucide-react";
+import { ArrowLeft, Pencil, Phone, ShieldAlert, UserCog } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard, KeyValue } from "@/components/shared/section-card";
 import { StatCard } from "@/components/shared/stat-card";
@@ -19,8 +19,7 @@ import { daysBetween, demoToday, formatDate, formatDateTime } from "@/lib/date-u
 import { formatMoney } from "@/lib/utils";
 import type { LeaveRecord, RosterEntry } from "@/types/driver";
 import type { Movement } from "@/types/movement";
-import { serviceStatusOf } from "@/lib/fleet-utils";
-import { AssignPrimeMoverDialog, DriverStatusDialog, EditDriverDialog } from "./driver-dialogs";
+import { DriverStatusDialog, EditDriverDialog } from "./driver-dialogs";
 
 interface PayHistoryRow {
   runId: string;
@@ -41,7 +40,7 @@ export function DriverProfile() {
   const { db } = useApp();
   const { can, isDriver, driverId, canSeeFinancials } = useAuth();
   const stats = useDriverStats();
-  const [dialog, setDialog] = useState<"edit" | "assign" | "status" | null>(null);
+  const [dialog, setDialog] = useState<"edit" | "status" | null>(null);
   const driver = db.drivers.find((d) => d.id === id);
   const today = demoToday();
 
@@ -66,8 +65,13 @@ export function DriverProfile() {
     return <EmptyState title="Driver not found" description={`No driver with ID ${id}.`} action={<Button render={<Link href="/drivers" />}>Back to drivers</Button>} />;
   }
 
-  const pm = driver.primeMoverId ? db.primeMovers.find((p) => p.id === driver.primeMoverId) : null;
-  const trailer = pm?.trailerId ? db.trailers.find((t) => t.id === pm.trailerId) : null;
+  // drivers are not tied to a truck: show the trucks the roster has had them on
+  const truckNow = rosterRows.find((r) => r.date === today && r.primeMoverId && r.attendance !== "Absent")?.primeMoverId ?? null;
+  const recentTrucks = (() => {
+    const counts = new Map<string, number>();
+    for (const r of rosterRows) if (r.primeMoverId && r.attendance !== "Absent" && r.date <= today) counts.set(r.primeMoverId, (counts.get(r.primeMoverId) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  })();
   const licenseLeft = daysBetween(today, driver.licenseExpiry);
   const s = stats.get(id) ?? { total: 0, completed: 0 };
   const manage = can("driver.manage");
@@ -88,7 +92,7 @@ export function DriverProfile() {
     { key: "date", header: "Date", sortValue: (r) => r.date, cell: (r) => <span className="whitespace-nowrap">{formatDate(r.date)}</span> },
     { key: "shift", header: "Shift", cell: (r) => <StatusBadge status={r.shift} /> },
     { key: "pm", header: "Prime Mover", cell: (r) => r.primeMoverId ?? "—" },
-    { key: "att", header: "Attendance", cell: (r) => (r.shift === "Morning" || r.shift === "Afternoon" || r.shift === "Night" ? <StatusBadge status={r.date > today ? "Scheduled" : r.attendance} /> : <span className="text-slate">—</span>) },
+    { key: "att", header: "Attendance", cell: (r) => (r.shift === "Morning" || r.shift === "Night" ? <StatusBadge status={r.date > today ? "Scheduled" : r.attendance} /> : <span className="text-slate">—</span>) },
     { key: "by", header: "Recorded by", cell: (r) => r.recordedBy ?? "—" },
   ];
   const leaveCols: Column<LeaveRecord>[] = [
@@ -124,9 +128,6 @@ export function DriverProfile() {
             </Button>
             {manage && (
               <>
-                <Button variant="outline" onClick={() => setDialog("assign")}>
-                  <Truck /> Assign prime mover
-                </Button>
                 <Button variant="outline" onClick={() => setDialog("status")}>
                   <UserCog /> Update status
                 </Button>
@@ -150,7 +151,7 @@ export function DriverProfile() {
         <StatCard label="Total movements" value={s.total} tone="navy" />
         <StatCard label="Completed" value={s.completed} tone="green" />
         <StatCard label="Attendance (Present / Late / Absent)" value={`${presentCount} / ${lateCount} / ${absentCount}`} tone="blue" hint="Rostered period" />
-        <StatCard label="Assigned prime mover" value={pm?.id ?? "None"} tone={pm ? "navy" : "grey"} hint={pm?.regNo} />
+        <StatCard label="Truck today" value={truckNow ?? "None"} tone={truckNow ? "navy" : "grey"} hint={truckNow ? db.primeMovers.find((p) => p.id === truckNow)?.regNo : "Not rostered today"} />
       </div>
 
       <Tabs defaultValue="overview">
@@ -177,18 +178,21 @@ export function DriverProfile() {
                 <KeyValue label="Address" className="col-span-2">{driver.address}</KeyValue>
               </dl>
             </SectionCard>
-            <SectionCard title="Assigned vehicle">
-              {pm ? (
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <KeyValue label="Prime mover"><Link href={`/fleet/${pm.id}`} className="text-brand hover:underline">{pm.id}</Link></KeyValue>
-                  <KeyValue label="Registration">{pm.regNo}</KeyValue>
-                  <KeyValue label="Make / model">{pm.make} {pm.model} ({pm.year})</KeyValue>
-                  <KeyValue label="Vehicle status"><StatusBadge status={pm.status} /></KeyValue>
-                  <KeyValue label="Trailer">{trailer ? `${trailer.id} · ${trailer.regNo}` : "—"}</KeyValue>
-                  <KeyValue label="Service status"><StatusBadge status={serviceStatusOf(pm.nextServiceDate)} /></KeyValue>
-                </dl>
+            <SectionCard title="Trucks driven" description="From the roster – drivers are not tied to one truck">
+              {recentTrucks.length ? (
+                <ul className="divide-y text-sm">
+                  {recentTrucks.map(([tid, n]) => {
+                    const t = db.primeMovers.find((p) => p.id === tid);
+                    return (
+                      <li key={tid} className="flex items-center justify-between py-2">
+                        <Link href={`/fleet/${tid}`} className="font-medium text-brand hover:underline">{tid}{t ? ` · ${t.regNo}` : ""}</Link>
+                        <span className="text-xs text-slate">{n} shift{n === 1 ? "" : "s"}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
               ) : (
-                <EmptyState title="No prime mover assigned" description="Assign a prime mover to this driver." action={manage ? <Button size="sm" onClick={() => setDialog("assign")}>Assign prime mover</Button> : undefined} />
+                <EmptyState title="No truck history" description="This driver has not been rostered on a truck yet." />
               )}
             </SectionCard>
           </div>
@@ -222,7 +226,6 @@ export function DriverProfile() {
       </Tabs>
 
       {dialog === "edit" && <EditDriverDialog driver={driver} open onOpenChange={(o) => !o && setDialog(null)} />}
-      {dialog === "assign" && <AssignPrimeMoverDialog driver={driver} open onOpenChange={(o) => !o && setDialog(null)} />}
       {dialog === "status" && <DriverStatusDialog driver={driver} open onOpenChange={(o) => !o && setDialog(null)} />}
     </div>
   );

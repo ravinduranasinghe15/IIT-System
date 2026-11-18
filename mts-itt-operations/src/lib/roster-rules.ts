@@ -4,22 +4,21 @@ import { addDays, eachDay, formatDay } from "./date-utils";
 
 /**
  * Roster rules (demo defaults – confirm with MTS):
- *  - three 8-hour shifts cover the 7:00 AM → 7:00 AM operational day;
- *  - a driver works at most one shift (8 h) per day;
+ *  - two 12-hour shifts (Morning / Night) cover the 7:00 AM → 7:00 AM operational day;
+ *  - a driver works at most one shift (12 h) per day;
  *  - at least 8 hours' rest between two shifts;
  *  - at least one day off (or leave) in every 7 days;
- *  - drivers rotate through the shifts; each driver drives only his own assigned truck (relief drivers cover other drivers' days off).
+ *  - drivers rotate through the shifts; drivers are NOT tied to a truck – the Manager puts any driver on any truck for a shift, and a truck has at most one driver per shift.
  */
-export const WORK_SHIFTS = ["Morning", "Afternoon", "Night"] as const;
+export const WORK_SHIFTS = ["Morning", "Night"] as const;
 export type WorkShift = (typeof WORK_SHIFTS)[number];
-export const isWorkShift = (s: RosterShift | string): s is WorkShift => s === "Morning" || s === "Afternoon" || s === "Night";
+export const isWorkShift = (s: RosterShift | string): s is WorkShift => s === "Morning" || s === "Night";
 
 export const SHIFT_HOURS: Record<WorkShift, { start: number; end: number; range: string; short: string }> = {
-  Morning: { start: 7, end: 15, range: "7:00 AM – 3:00 PM", short: "7a – 3p" },
-  Afternoon: { start: 15, end: 23, range: "3:00 PM – 11:00 PM", short: "3p – 11p" },
-  Night: { start: 23, end: 31, range: "11:00 PM – 7:00 AM", short: "11p – 7a" },
+  Morning: { start: 7, end: 19, range: "7:00 AM – 7:00 PM", short: "7a – 7p" },
+  Night: { start: 19, end: 31, range: "7:00 PM – 7:00 AM", short: "7p – 7a" },
 };
-export const SHIFT_LENGTH_HOURS = 8;
+export const SHIFT_LENGTH_HOURS = 12;
 export const MIN_REST_HOURS = 8;
 export const ROSTER_DAYS_BACK = 7;
 export const ROSTER_DAYS_AHEAD = 30;
@@ -76,11 +75,17 @@ export const getterFor = (roster: RosterEntry[], driverId: string): EntryGetter 
   return (date) => m.get(date);
 };
 
+/** Driver the roster has on `truckId` today (drivers are not tied to a truck; Morning is checked before Night). */
+export function driverOnTruck(db: DB, truckId: string, date: string): string | null {
+  const rows = db.roster.filter((r) => r.date === date && r.primeMoverId === truckId && r.attendance !== "Absent" && isWorkShift(r.shift));
+  return (rows.find((r) => r.shift === "Morning") ?? rows[0])?.driverId ?? null;
+}
+
 export interface AvailableDriver {
   driver: Driver;
   lastShift: string;
-  /** The driver's own truck (null for relief drivers) */
-  ownTruck: string | null;
+  /** The truck the driver drove last (a hint for continuity) */
+  lastTruck: string | null;
   usesWeeklyOff: boolean;
 }
 
@@ -99,12 +104,12 @@ export function availableDrivers(db: DB, date: string, shift: WorkShift, exclude
     out.push({
       driver,
       lastShift: last ? `${last.shift} on ${formatDay(last.date, "EEE dd MMM")}` : "No recent shift",
-      ownTruck: driver.primeMoverId,
+      lastTruck: last?.primeMoverId ?? null,
       usesWeeklyOff,
     });
   }
-  // drivers of the same truck first (they know it), then those who keep their weekly off, then by name
-  const same = (a: AvailableDriver) => (truck && a.ownTruck === truck ? 0 : 1);
+  // drivers who drove this truck last first (they know it), then those who keep their weekly off, then by name
+  const same = (a: AvailableDriver) => (truck && a.lastTruck === truck ? 0 : 1);
   return out.sort((a, b) => same(a) - same(b) || Number(a.usesWeeklyOff) - Number(b.usesWeeklyOff) || a.driver.name.localeCompare(b.driver.name));
 }
 
@@ -131,7 +136,6 @@ export function checkRosterRules(drivers: Driver[], roster: RosterEntry[], from:
   const off: string[] = [];
   const mix: string[] = [];
   const trucks: string[] = [];
-  const truckOf = new Map(drivers.map((d) => [d.id, d.primeMoverId]));
   for (const d of drivers) {
     const m = byDriver.get(d.id) ?? new Map<string, RosterEntry>();
     for (const date of days) {
@@ -152,9 +156,15 @@ export function checkRosterRules(drivers: Driver[], roster: RosterEntry[], from:
     }
     const worked = days.map((dt) => m.get(dt)).filter((e): e is RosterEntry => !!e && isWorkShift(e.shift));
     if (days.length >= 14 && worked.length >= 5 && new Set(worked.map((e) => e.shift)).size < 2) mix.push(d.name);
-    // a regular driver may only be on his own truck (a relief driver covering someone else is the one exception)
-    const own = truckOf.get(d.id);
-    if (own && worked.some((e) => !e.coveringFor && e.primeMoverId && e.primeMoverId !== own)) trucks.push(d.name);
+  }
+  // a truck can have only one driver per shift
+  const seen = new Map<string, string>();
+  const ids = new Set(drivers.map((d) => d.id));
+  for (const r of roster) {
+    if (r.date < from || r.date > to || !isWorkShift(r.shift) || !r.primeMoverId || r.attendance === "Absent" || !ids.has(r.driverId)) continue;
+    const k = `${r.date}|${r.shift}|${r.primeMoverId}`;
+    if (seen.has(k)) trucks.push(`${r.primeMoverId} ${r.shift} ${formatDay(r.date, "dd MMM")}`);
+    else seen.set(k, r.driverId);
   }
   const n = drivers.length;
   const res = (key: string, label: string, problems: string[], okText: string): RuleCheck => ({
@@ -169,6 +179,6 @@ export function checkRosterRules(drivers: Driver[], roster: RosterEntry[], from:
     res("rest", `At least ${MIN_REST_HOURS} hours of rest between shifts`, rest, `${n} of ${n} drivers`),
     res("off", "At least one day off in every 7 days", off, days.length >= 7 ? `${n} of ${n} drivers` : "Select 7+ days to check"),
     res("mix", "Drivers rotate through different shifts", mix, days.length >= 14 ? `${n} of ${n} drivers` : "Select 14 days to check"),
-    res("trucks", "Each driver drives only his assigned truck", trucks, `${n} of ${n} drivers`),
+    res("trucks", "Each truck has only one driver per shift", trucks, "No double-booked trucks"),
   ];
 }

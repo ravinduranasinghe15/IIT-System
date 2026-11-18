@@ -13,6 +13,8 @@ import { useApp } from "@/contexts/app-context";
 import { demoToday } from "@/lib/date-utils";
 import { MAX_DATA_URL_KB, runExtraction, uploadDocument } from "@/lib/mutations/evidence";
 import { DEMO_DRIVER_LOG, DEMO_DRIVER_LOG_DIR, demoDriverLogByName } from "@/data/demo-chits";
+import { DEMO_LOG_PACK, demoPackLogByName } from "@/data/demo-driver-logs";
+import { driverLogStats } from "@/lib/driver-logs";
 import { WORK_SHIFTS, SHIFT_HOURS } from "@/lib/roster-rules";
 import type { DriverLogMeta } from "@/types/evidence";
 
@@ -40,6 +42,8 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
 
   useEffect(() => {
     if (!open) return;
+    // reset the form each time the dialog opens
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFiles([]);
     setError(null);
     setDriverId(prefill?.driverId ?? "");
@@ -50,13 +54,14 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
 
   const onDriver = (id: string) => {
     setDriverId(id);
-    const pm = db.drivers.find((d) => d.id === id)?.primeMoverId;
-    if (pm) setPrimeMoverId(pm);
+    // the lorry is not tied to the driver: suggest the one the roster has him on for that shift
+    const pm = db.roster.find((r) => r.driverId === id && r.date === date && r.shift === shift && r.primeMoverId)?.primeMoverId;
+    if (pm && !primeMoverId) setPrimeMoverId(pm);
   };
 
   const addFiles = (picked: File[]) => {
     setFiles((p) => [...p, ...picked]);
-    const demo = picked.map((f) => demoDriverLogByName(f.name)).find(Boolean);
+    const demo = picked.map((f) => demoDriverLogByName(f.name) ?? demoPackLogByName(f.name)).find(Boolean);
     if (demo) {
       setDriverId(demo.driverId);
       setPrimeMoverId(demo.primeMoverId);
@@ -80,6 +85,38 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
       return !!d.documents.find((x) => x.id === r.doc.id)?.ocr?.verified;
     });
     toast.success("Demo driver log submitted", { description: auto ? "Confidence is above the threshold, so it was verified automatically." : "Open it from the sheets list to verify the extracted values." });
+    onOpenChange(false);
+  };
+
+  /** Submits every demo sheet (13 Oct – 13 Nov) that is not on file yet: confident ones verify themselves and set the real driver. */
+  const submitPack = () => {
+    const sheets = [
+      { fileName: DEMO_DRIVER_LOG.fileName, driverId: DEMO_DRIVER_LOG.driverId, primeMoverId: DEMO_DRIVER_LOG.primeMoverId, date: DEMO_DRIVER_LOG.date, shift: DEMO_DRIVER_LOG.shift },
+      ...DEMO_LOG_PACK.filter((r) => !r.spare),
+    ];
+    const out = update((d) => {
+      const have = new Set(d.documents.map((x) => x.name.toLowerCase()));
+      let added = 0;
+      let auto = 0;
+      for (const s of sheets) {
+        if (have.has(s.fileName.toLowerCase())) continue;
+        const r = uploadDocument(d, {
+          name: s.fileName,
+          docType: "Driver Log Sheet",
+          mime: "image/png",
+          sizeKb: 30,
+          dataUrl: `${DEMO_DRIVER_LOG_DIR}${s.fileName}`,
+          movementId: null,
+          driverLog: { driverId: s.driverId, primeMoverId: s.primeMoverId, date: s.date, shift: s.shift },
+        });
+        runExtraction(d, r.doc.id);
+        added++;
+        if (d.documents.find((x) => x.id === r.doc.id)?.ocr?.verified) auto++;
+      }
+      return { added, auto, missing: driverLogStats(d).missing.length };
+    });
+    if (out.added === 0) toast.info("The demo log pack is already on file");
+    else toast.success(`${out.added} driver log sheets submitted`, { description: `${out.auto} verified automatically, ${out.added - out.auto} need a manual check. ${out.missing} movement(s) still have no log.` });
     onOpenChange(false);
   };
 
@@ -140,6 +177,10 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
           or{" "}
           <button type="button" className="font-medium text-brand underline" onClick={submitDemo} disabled={busy}>
             submit the demo driver log ({db.drivers.find((d) => d.id === DEMO_DRIVER_LOG.driverId)?.name}, {DEMO_DRIVER_LOG.date} {DEMO_DRIVER_LOG.shift})
+          </button>
+          {" · "}
+          <button type="button" className="font-medium text-brand underline" onClick={submitPack} disabled={busy}>
+            submit the demo log pack ({DEMO_LOG_PACK.filter((r) => !r.spare).length + 1} sheets, 13 Oct – 13 Nov)
           </button>
         </div>
         {files.length > 0 && (

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, Eye, MoreHorizontal, Pencil, Truck, UserCog } from "lucide-react";
+import { Download, Eye, MoreHorizontal, Pencil, UserCog } from "lucide-react";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { SearchInput } from "@/components/shared/search-input";
 import { NativeSelect } from "@/components/shared/native-select";
@@ -14,21 +14,22 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useDriverStats } from "@/hooks/use-drivers";
 import { downloadCsv } from "@/lib/export-utils";
-import { formatDate, demoToday, daysBetween } from "@/lib/date-utils";
+import { formatDate, demoToday, daysBetween, realToday } from "@/lib/date-utils";
 import type { Driver } from "@/types/driver";
-import { AssignPrimeMoverDialog, DriverStatusDialog, EditDriverDialog } from "./driver-dialogs";
+import { DriverStatusDialog, EditDriverDialog } from "./driver-dialogs";
 
-type Dialog = { kind: "edit" | "assign" | "status"; driver: Driver } | null;
+type Dialog = { kind: "edit" | "status"; driver: Driver } | null;
 
 export function DriverTable() {
   const { db } = useApp();
+  /** Drivers are not tied to a truck: this is the truck the roster has them on today. */
+  const truckToday = (id: string) => db.roster.find((r) => r.driverId === id && r.date === realToday() && r.primeMoverId && r.attendance !== "Absent")?.primeMoverId ?? null;
   const { can } = useAuth();
   const router = useRouter();
   const stats = useDriverStats();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [shift, setShift] = useState("");
-  const [assigned, setAssigned] = useState("");
   const [dialog, setDialog] = useState<Dialog>(null);
   const manage = can("driver.manage");
 
@@ -37,12 +38,10 @@ export function DriverTable() {
     return db.drivers.filter((d) => {
       if (status && d.status !== status) return false;
       if (shift && d.shift !== shift) return false;
-      if (assigned === "yes" && !d.primeMoverId) return false;
-      if (assigned === "no" && d.primeMoverId) return false;
       if (!s) return true;
-      return [d.id, d.name, d.phone, d.licenseNo, d.primeMoverId ?? ""].some((v) => v.toLowerCase().includes(s));
+      return [d.id, d.name, d.phone, d.licenseNo].some((v) => v.toLowerCase().includes(s));
     });
-  }, [db.drivers, q, status, shift, assigned]);
+  }, [db.drivers, q, status, shift]);
 
   const columns: Column<Driver>[] = [
     { key: "id", header: "Driver ID", sortValue: (d) => d.id, cell: (d) => <span className="font-medium text-navy">{d.id}</span> },
@@ -59,16 +58,18 @@ export function DriverTable() {
     { key: "phone", header: "Contact", cell: (d) => <span className="whitespace-nowrap text-slate">{d.phone}</span> },
     {
       key: "pm",
-      header: "Prime Mover",
-      sortValue: (d) => d.primeMoverId ?? "~",
-      cell: (d) =>
-        d.primeMoverId ? (
-          <Link href={`/fleet/${d.primeMoverId}`} className="text-brand hover:underline" onClick={(e) => e.stopPropagation()}>
-            {d.primeMoverId}
+      header: "Truck today",
+      sortValue: (d) => truckToday(d.id) ?? "~",
+      cell: (d) => {
+        const t = truckToday(d.id);
+        return t ? (
+          <Link href={`/fleet/${t}`} className="text-brand hover:underline" onClick={(e) => e.stopPropagation()}>
+            {t}
           </Link>
         ) : (
-          <span className="text-slate">Unassigned</span>
-        ),
+          <span className="text-slate">Not rostered</span>
+        );
+      },
     },
     {
       key: "license",
@@ -116,9 +117,6 @@ export function DriverTable() {
                   <DropdownMenuItem onClick={() => setDialog({ kind: "edit", driver: d })}>
                     <Pencil /> Edit details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialog({ kind: "assign", driver: d })}>
-                    <Truck /> Assign prime mover
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setDialog({ kind: "status", driver: d })}>
                     <UserCog /> Update status
                   </DropdownMenuItem>
@@ -138,7 +136,7 @@ export function DriverTable() {
         "Driver ID": d.id,
         Name: d.name,
         Contact: d.phone,
-        "Prime Mover": d.primeMoverId ?? "",
+        "Truck today": truckToday(d.id) ?? "",
         "Licence No": d.licenseNo,
         "Licence Expiry": d.licenseExpiry,
         Status: d.status,
@@ -150,21 +148,10 @@ export function DriverTable() {
   return (
     <div className="rounded-xl border bg-card shadow-sm">
       <div className="flex flex-wrap items-center gap-2 border-b p-3">
-        <SearchInput value={q} onChange={setQ} placeholder="Search name, ID, licence, prime mover…" className="w-full sm:w-72" />
+        <SearchInput value={q} onChange={setQ} placeholder="Search name, ID, licence…" className="w-full sm:w-72" />
         <NativeSelect className="w-36" value={status} onValueChange={setStatus} placeholder="All statuses" options={["Active", "On Leave", "Suspended", "Inactive"]} aria-label="Status filter" />
-        <NativeSelect className="w-36" value={shift} onValueChange={setShift} placeholder="All shifts" options={["Morning", "Afternoon", "Night", "Rotating"]} aria-label="Shift filter" />
-        <NativeSelect
-          className="w-44"
-          value={assigned}
-          onValueChange={setAssigned}
-          placeholder="Any assignment"
-          options={[
-            { value: "yes", label: "Has prime mover" },
-            { value: "no", label: "No prime mover" },
-          ]}
-          aria-label="Assignment filter"
-        />
-        {(q || status || shift || assigned) && (
+        <NativeSelect className="w-36" value={shift} onValueChange={setShift} placeholder="All shifts" options={["Morning", "Night", "Rotating"]} aria-label="Shift filter" />
+        {(q || status || shift) && (
           <Button
             variant="ghost"
             size="sm"
@@ -172,7 +159,6 @@ export function DriverTable() {
               setQ("");
               setStatus("");
               setShift("");
-              setAssigned("");
             }}
           >
             Clear
@@ -192,7 +178,6 @@ export function DriverTable() {
         emptyDescription="Adjust the search or filters, or register a new driver."
       />
       {dialog?.kind === "edit" && <EditDriverDialog driver={dialog.driver} open onOpenChange={(o) => !o && setDialog(null)} />}
-      {dialog?.kind === "assign" && <AssignPrimeMoverDialog driver={dialog.driver} open onOpenChange={(o) => !o && setDialog(null)} />}
       {dialog?.kind === "status" && <DriverStatusDialog driver={dialog.driver} open onOpenChange={(o) => !o && setDialog(null)} />}
     </div>
   );

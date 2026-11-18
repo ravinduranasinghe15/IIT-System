@@ -25,6 +25,7 @@ export function ScrollX({ children, className }: { children: ReactNode; classNam
   useEffect(() => {
     const el = scroller();
     if (!el) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     measure();
     el.addEventListener("scroll", measure, { passive: true });
     const ro = new ResizeObserver(measure);

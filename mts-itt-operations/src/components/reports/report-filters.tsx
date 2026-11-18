@@ -78,7 +78,7 @@ export function ReportFiltersBar({ db, filters, onChange, supported, downloadSlo
           );
         })}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-5">
         <Field label="From (op. day)" error={invalid ? "Start is after end" : undefined} className="xl:col-span-1">
           <Input type="date" value={filters.from} onChange={(e) => set("from", e.target.value)} aria-invalid={invalid} aria-label="From date" />
         </Field>
@@ -99,6 +99,9 @@ export function ReportFiltersBar({ db, filters, onChange, supported, downloadSlo
         </Field>
         <Field label="Container size" hint={hint("size")}>
           <NativeSelect value={filters.size} onValueChange={(v) => set("size", v as ReportFilters["size"])} placeholder="All sizes" options={CONTAINER_SIZES} disabled={dis("size")} aria-label="Container size" />
+        </Field>
+        <Field label="Shift" hint={hint("shift")}>
+          <NativeSelect value={filters.shift} onValueChange={(v) => set("shift", v as ReportFilters["shift"])} placeholder="All shifts" options={[{ value: "Morning", label: "Morning (7a–7p)" }, { value: "Night", label: "Night (7p–7a)" }]} disabled={dis("shift")} aria-label="Shift" />
         </Field>
         <Field label="Movement status" hint={hint("status")}>
           <NativeSelect value={filters.status} onValueChange={(v) => set("status", v as ReportFilters["status"])} placeholder="All statuses" options={MOVEMENT_STATUSES.slice()} disabled={dis("status")} aria-label="Movement status" />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BellRing, CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { BellRing, CalendarCheck, CalendarPlus, CalendarDays, Check, ChevronLeft, ChevronRight, Moon, Sun, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
 import { SearchInput } from "@/components/shared/search-input";
@@ -15,6 +15,7 @@ import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calen
 import { RosterMonth, addMonths, monthStart } from "./roster-month";
 import { AttendanceDialog } from "./attendance-dialog";
 import { AbsenceDialog } from "./absence-dialog";
+import { RosterGeneratorDialog } from "./roster-generator-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
 import { Rows3 } from "lucide-react";
@@ -36,6 +37,7 @@ export function RosterView() {
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [absenceOpen, setAbsenceOpen] = useState(false);
+  const [genOpen, setGenOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
 
@@ -67,7 +69,6 @@ export function RosterView() {
 
   const todayRows = db.roster.filter((r) => r.date === today && isWorkingShift(r.shift));
   const morningToday = todayRows.filter((r) => r.shift === "Morning" && r.attendance !== "Absent").length;
-  const afternoonToday = todayRows.filter((r) => r.shift === "Afternoon" && r.attendance !== "Absent").length;
   const nightToday = todayRows.filter((r) => r.shift === "Night" && r.attendance !== "Absent").length;
   const absentToday = todayRows.filter((r) => r.attendance === "Absent").length;
   const pendingLeave = db.leaves.filter((l) => l.status === "Pending").length;
@@ -87,7 +88,7 @@ export function RosterView() {
           description={`Your shifts and trucks for the next 14 days${own ? ` (${own.name})` : ""}.`}
           actions={<Button onClick={() => setLeaveOpen(true)}>Request leave</Button>}
         />
-        <SectionCard title="My shifts" description="Morning 7:00 AM – 3:00 PM · Afternoon 3:00 PM – 11:00 PM · Night 11:00 PM – 7:00 AM" bodyClassName="p-0">
+        <SectionCard title="My shifts" description="Morning 7:00 AM – 7:00 PM · Night 7:00 PM – 7:00 AM" bodyClassName="p-0">
           {myDays.length === 0 ? (
             <div className="p-6 text-center text-sm text-slate">No shifts are rostered for the next 14 days.</div>
           ) : (
@@ -141,6 +142,11 @@ export function RosterView() {
         }
         actions={
           <>
+            {canEdit && (
+              <Button onClick={() => setGenOpen(true)}>
+                <CalendarPlus /> Generate roster
+              </Button>
+            )}
             {canAttend && (
               <Button variant="destructive" onClick={() => setAbsenceOpen(true)}>
                 <BellRing /> Driver not coming
@@ -157,13 +163,12 @@ export function RosterView() {
       />
 
       {/* Today at a glance + what the shifts mean */}
-      <div className="mb-4 grid grid-cols-6 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-5">
+      <div className="mb-4 grid grid-cols-6 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
         {([
           { k: "Morning", n: morningToday, icon: Sun, cls: "bg-sky-50 text-sky-900 ring-sky-200" },
-          { k: "Afternoon", n: afternoonToday, icon: Sunset, cls: "bg-orange-50 text-orange-900 ring-orange-200" },
           { k: "Night", n: nightToday, icon: Moon, cls: "bg-slate-800 text-white ring-slate-900/30" },
         ] as const).map(({ k, n, icon: Icon, cls }) => (
-          <div key={k} className={`col-span-2 flex flex-col items-start gap-1 rounded-xl p-2.5 ring-1 ring-inset sm:col-span-1 sm:flex-row sm:items-center sm:gap-3 sm:p-3 ${cls}`}>
+          <div key={k} className={`col-span-3 flex flex-col items-start gap-1 rounded-xl p-2.5 ring-1 ring-inset sm:col-span-1 sm:flex-row sm:items-center sm:gap-3 sm:p-3 ${cls}`}>
             <Icon className="size-5 shrink-0" />
             <div className="min-w-0">
               <div className="text-2xl font-semibold leading-none tabular-nums">{n}</div>
@@ -358,6 +363,7 @@ export function RosterView() {
       {assign && <AssignDriverDialog target={assign} onClose={() => setAssign(null)} />}
       {attendanceOpen && <AttendanceDialog open onOpenChange={setAttendanceOpen} />}
       {absenceOpen && <AbsenceDialog open onOpenChange={setAbsenceOpen} />}
+      {genOpen && <RosterGeneratorDialog open onOpenChange={setGenOpen} />}
       {leaveOpen && <LeaveRequestDialog open onOpenChange={setLeaveOpen} fixedDriverId={isDriver ? driverId : undefined} />}
     </div>
   );

@@ -15,7 +15,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useLookups } from "@/hooks/use-lookups";
 import { downloadCsv } from "@/lib/export-utils";
 import { serviceStatusOf, daysToService } from "@/lib/fleet-utils";
-import { formatDate } from "@/lib/date-utils";
+import { formatDate, realToday } from "@/lib/date-utils";
+import { driverOnTruck } from "@/lib/roster-rules";
 import type { PrimeMover } from "@/types/vehicle";
 import { ServiceLogDialog, VehicleEditDialog } from "./vehicle-dialogs";
 
@@ -44,9 +45,9 @@ export function VehicleTable() {
       if (status && v.status !== status) return false;
       if (service && serviceStatusOf(v.nextServiceDate) !== service) return false;
       if (!s) return true;
-      return [v.id, v.regNo, v.make, v.model, v.trailerId ?? "", look.driverName(v.driverId)].some((x) => x.toLowerCase().includes(s));
+      return [v.id, v.regNo, v.make, v.model, v.trailerId ?? ""].some((x) => x.toLowerCase().includes(s));
     });
-  }, [db.primeMovers, q, status, service, look]);
+  }, [db.primeMovers, q, status, service]);
 
   const columns: Column<PrimeMover>[] = [
     { key: "id", header: "Vehicle ID", sortValue: (v) => v.id, cell: (v) => <span className="font-medium text-navy">{v.id}</span> },
@@ -55,16 +56,18 @@ export function VehicleTable() {
     { key: "trailer", header: "Assigned Trailer", sortValue: (v) => v.trailerId ?? "~", cell: (v) => (v.trailerId ? `${v.trailerId} · ${look.trailer(v.trailerId)?.regNo ?? ""}` : <span className="text-slate">None</span>) },
     {
       key: "driver",
-      header: "Current Driver",
-      sortValue: (v) => (v.driverId ? look.driverName(v.driverId) : "~"),
-      cell: (v) =>
-        v.driverId ? (
-          <Link href={`/drivers/${v.driverId}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand hover:underline">
-            {look.driverName(v.driverId)}
+      header: "Driver today",
+      sortValue: (v) => driverOnTruck(db, v.id, realToday()) ?? "~",
+      cell: (v) => {
+        const d = driverOnTruck(db, v.id, realToday());
+        return d ? (
+          <Link href={`/drivers/${d}`} onClick={(e) => e.stopPropagation()} className="hover:text-brand hover:underline">
+            {look.driverName(d)}
           </Link>
         ) : (
-          <span className="text-slate">Unassigned</span>
-        ),
+          <span className="text-slate">Not rostered</span>
+        );
+      },
     },
     { key: "status", header: "Status", sortValue: (v) => v.status, cell: (v) => <StatusBadge status={v.status} /> },
     { key: "mv", header: "Movements", align: "right", sortValue: (v) => movementCounts.get(v.id) ?? 0, cell: (v) => <span className="tabular-nums">{movementCounts.get(v.id) ?? 0}</span> },
@@ -142,7 +145,7 @@ export function VehicleTable() {
                 "Reg No": v.regNo,
                 Type: `${v.make} ${v.model}`,
                 Trailer: v.trailerId ?? "",
-                Driver: look.driverName(v.driverId),
+                "Driver today": look.driverName(driverOnTruck(db, v.id, realToday())),
                 Status: v.status,
                 Movements: movementCounts.get(v.id) ?? 0,
                 "Next Service": v.nextServiceDate,

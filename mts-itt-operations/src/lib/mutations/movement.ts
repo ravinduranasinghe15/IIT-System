@@ -4,6 +4,7 @@ import type { ContainerSize, TerminalCode } from "@/types/terminal";
 import { actorOf, logAudit, nextId, nowOf } from "../db-helpers";
 import { detectIssues, raiseExceptions, scanMissingEvidence } from "../reconciliation";
 import { demoToday } from "../date-utils";
+import { rosterDriverFor } from "../driver-logs";
 
 export interface MovementInput {
   containerNos: string[];
@@ -13,6 +14,7 @@ export interface MovementInput {
   primeMoverId: string | null;
   trailerId: string | null;
   driverId: string | null;
+  driverSource?: Movement["driverSource"];
   loadingAt: string | null;
   dischargeAt: string | null;
   status: MovementStatus;
@@ -39,8 +41,12 @@ export function validateJourney(size: ContainerSize, containerNos: string[]): st
 export function createMovement(db: DB, input: MovementInput): Movement {
   const actor = actorOf(db);
   const now = nowOf(db);
+  // the report names only the truck: the driver is whoever the roster has on that truck for that shift (a verified driver log can correct it later)
+  const rosterDriver = input.driverId ? null : rosterDriverFor(db, input.primeMoverId, input.loadingAt);
   const m: Movement = {
     ...input,
+    driverId: input.driverId ?? rosterDriver,
+    driverSource: input.driverId ? (input.driverSource ?? "manual") : rosterDriver ? "roster" : undefined,
     origin: input.origin ?? "Manual",
     id: nextId(db, "movement", "MV-", 4),
     createdAt: now,
@@ -100,6 +106,7 @@ export function updateMovement(
     changes.push(`${key}: ${fmt(prev)} → ${fmt(next)}`);
     (m as unknown as Record<string, unknown>)[key] = next;
     if (MATERIAL_FIELDS.includes(key as keyof Movement)) material = true;
+    if (key === "driverId") m.driverSource = "manual"; // set by hand: neither the roster nor a log sheet will overwrite it silently
   }
   if (!changes.length) return { movement: m, changes, needsApproval: false };
   const isManager = actor.role === "Manager";

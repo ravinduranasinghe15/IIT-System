@@ -25,7 +25,6 @@ const schema = z.object({
   status: z.enum(["Active", "In Maintenance", "Inactive"]),
   nextServiceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Select the next service date"),
   trailerId: z.string(),
-  driverId: z.string(),
 });
 type Values = z.infer<typeof schema>;
 
@@ -36,7 +35,7 @@ export function VehicleFormDialog({ open, vehicle, onClose }: { open: boolean; v
     defaultValues: blank("PM-010"),
   });
   const { errors } = formState;
-  const [trailerId, driverId] = useWatch({ control, name: ["trailerId", "driverId"] });
+  const [trailerId] = useWatch({ control, name: ["trailerId"] });
   const editingId = vehicle?.id;
 
   useEffect(() => {
@@ -54,7 +53,6 @@ export function VehicleFormDialog({ open, vehicle, onClose }: { open: boolean; v
             status: vehicle.status,
             nextServiceDate: vehicle.nextServiceDate,
             trailerId: vehicle.trailerId ?? "",
-            driverId: vehicle.driverId ?? "",
           }
         : blank(nextVehicleId(db.primeMovers, "PM-")),
     );
@@ -62,8 +60,8 @@ export function VehicleFormDialog({ open, vehicle, onClose }: { open: boolean; v
   }, [open, vehicle, reset]);
 
   const onSubmit = handleSubmit((v) => {
-    const { id, trailerId: tr, driverId: dr, ...rest } = v;
-    const res = update((d) => savePrimeMover(d, { ...rest, trailerId: tr || null, driverId: dr || null }, id.toUpperCase(), !vehicle));
+    const { id, trailerId: tr, ...rest } = v;
+    const res = update((d) => savePrimeMover(d, { ...rest, trailerId: tr || null }, id.toUpperCase(), !vehicle));
     if (!res.ok) {
       setError(res.error.includes("ID") ? "id" : "regNo", { message: res.error });
       return void toast.error(res.error);
@@ -76,12 +74,7 @@ export function VehicleFormDialog({ open, vehicle, onClose }: { open: boolean; v
     value: t.id,
     label: `${t.id} – ${t.regNo}${t.primeMoverId && t.primeMoverId !== editingId ? ` (on ${t.primeMoverId})` : ""}`,
   }));
-  const driverOptions = db.drivers.map((dr) => ({
-    value: dr.id,
-    label: `${dr.id} – ${dr.name}${dr.primeMoverId && dr.primeMoverId !== editingId ? ` (on ${dr.primeMoverId})` : ""}`,
-  }));
   const trailerTaken = db.primeMovers.find((p) => p.id !== editingId && p.trailerId === trailerId);
-  const driverTaken = db.primeMovers.find((p) => p.id !== editingId && p.driverId === driverId);
 
   return (
     <FormDialog
@@ -130,9 +123,6 @@ export function VehicleFormDialog({ open, vehicle, onClose }: { open: boolean; v
         <Field label="Assigned trailer" error={errors.trailerId?.message} hint={trailerTaken ? `Will be moved from ${trailerTaken.id}.` : undefined}>
           <Controller control={control} name="trailerId" render={({ field }) => <NativeSelect value={field.value} onValueChange={field.onChange} placeholder="Unassigned" options={trailerOptions} />} />
         </Field>
-        <Field label="Assigned driver" error={errors.driverId?.message} hint={driverTaken ? `Will be moved from ${driverTaken.id}.` : undefined}>
-          <Controller control={control} name="driverId" render={({ field }) => <NativeSelect value={field.value} onValueChange={field.onChange} placeholder="Unassigned" options={driverOptions} />} />
-        </Field>
         <button type="submit" className="hidden" />
       </form>
     </FormDialog>
@@ -140,5 +130,5 @@ export function VehicleFormDialog({ open, vehicle, onClose }: { open: boolean; v
 }
 
 function blank(id: string): Values {
-  return { id, regNo: "", vehicleType: "Prime Mover 6x4", make: "", model: "", year: 2023, odometerKm: 0, status: "Active", nextServiceDate: "2027-01-15", trailerId: "", driverId: "" };
+  return { id, regNo: "", vehicleType: "Prime Mover 6x4", make: "", model: "", year: 2023, odometerKm: 0, status: "Active", nextServiceDate: "2027-01-15", trailerId: "" };
 }

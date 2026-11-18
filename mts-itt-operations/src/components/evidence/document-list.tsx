@@ -57,13 +57,19 @@ export function DocumentList({
       if (!s) return true;
       return d.id.toLowerCase().includes(s) || d.name.toLowerCase().includes(s) || (d.movementId ?? "").toLowerCase().includes(s) || d.uploadedBy.toLowerCase().includes(s);
     });
-  }, [docs, filters]);
+  }, [docs, filters, db]);
 
-  /** Driver of the linked movement (chits) or the driver named on the log sheet. */
-  const driverNameOf = (d: EvidenceDoc): string | null => {
+  /**
+   * Driver of the linked movement (set from the roster, or from a verified driver log), else the driver named on the log
+   * sheet, else - when neither is known yet - the name the chit itself carries (marked "from chit").
+   */
+  const driverOf = (d: EvidenceDoc): { name: string; fromChit: boolean } | null => {
     const id = d.driverLog?.driverId ?? db.movements.find((m) => m.id === d.movementId)?.driverId ?? null;
-    return id ? (db.drivers.find((x) => x.id === id)?.name ?? id) : null;
+    if (id) return { name: db.drivers.find((x) => x.id === id)?.name ?? id, fromChit: false };
+    const read = d.ocr?.fields.find((f) => f.key === "driver")?.value?.trim();
+    return read ? { name: read, fromChit: true } : null;
   };
+  const driverNameOf = (d: EvidenceDoc): string | null => driverOf(d)?.name ?? null;
 
   const columns: Column<EvidenceDoc>[] = [
     { key: "id", header: "Doc ID", sortValue: (d) => d.id, cell: (d) => <span className="font-semibold text-brand">{d.id}</span> },
@@ -84,8 +90,15 @@ export function DocumentList({
       header: "Driver",
       sortValue: (d) => driverNameOf(d) ?? "~",
       cell: (d) => {
-        const n = driverNameOf(d);
-        return n ? <span className="whitespace-nowrap">{n}</span> : <span className="text-slate-400">—</span>;
+        const x = driverOf(d);
+        if (!x) return <span className="text-slate-400" title="No driver yet: not on the roster for that truck and shift. A verified driver log will set it.">—</span>;
+        return x.fromChit ? (
+          <span className="whitespace-nowrap text-slate" title="Name read from the chit – the movement has no driver yet (not on the roster; a verified driver log will set it)">
+            {x.name} <span className="text-[11px] italic">(from chit)</span>
+          </span>
+        ) : (
+          <span className="whitespace-nowrap">{x.name}</span>
+        );
       },
     },
     { key: "at", header: "Uploaded", sortValue: (d) => d.uploadedAt, cell: (d) => <span className="whitespace-nowrap">{formatDateTime(d.uploadedAt)}</span> },

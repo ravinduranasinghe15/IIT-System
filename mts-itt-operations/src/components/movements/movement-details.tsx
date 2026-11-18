@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useLookups } from "@/hooks/use-lookups";
 import { useMovements } from "@/hooks/use-movements";
 import { billableStatus } from "@/lib/eligibility";
+import { BillingReadiness } from "./billing-readiness";
 import { formatDateTime, minutesBetween } from "@/lib/date-utils";
 import { ASSUMPTION_NOTE } from "@/lib/constants";
 import { unitsFor } from "@/lib/eligibility";
@@ -134,6 +135,8 @@ export function MovementDetails() {
         </div>
       )}
 
+      {canSeeFinancials && <BillingReadiness movement={m} />}
+
       <div className="grid gap-4 lg:grid-cols-3">
         <SectionCard title="Movement information" className="lg:col-span-2">
           <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
@@ -203,6 +206,9 @@ export function MovementDetails() {
                 )
               ) : (
                 "Not recorded"
+              )}
+              {driver && m.driverSource && m.driverSource !== "manual" && (
+                <span className="ml-2 text-xs text-slate">{m.driverSource === "driver log" ? "from verified driver log" : "from roster"}</span>
               )}
             </KeyValue>
           </dl>

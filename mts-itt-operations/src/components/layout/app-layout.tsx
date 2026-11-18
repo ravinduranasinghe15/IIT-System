@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { DriverPhoneFrame, DriverBottomNav, isMobileRole, useIsEmbedded, useIsDesktop } from "./driver-phone-frame";
 import { SidebarContent } from "./app-sidebar";
 import { AppHeader } from "./app-header";
+import { AssistantWidget } from "@/components/assistant/assistant-widget";
 import { useAppState } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useLocalStorage } from "@/hooks/use-local-storage";
@@ -42,7 +43,7 @@ function Shell({ children }: { children: ReactNode }) {
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader onMenu={() => setMobile(true)} />
-        <main className={cn("scroll-thin flex-1 overflow-y-auto p-4 md:p-6", phoneRole && "pb-20")}>
+        <main className={cn("scroll-thin flex-1 overflow-y-auto p-4 pb-24 md:p-6 md:pb-24", phoneRole && "pb-36")}>
           <div className="mx-auto max-w-[1500px]">
             <Suspense fallback={<LoadingState />}>
               {allowed ? (
@@ -66,6 +67,7 @@ function Shell({ children }: { children: ReactNode }) {
         </main>
       </div>
       {phoneRole && <DriverBottomNav />}
+      <AssistantWidget liftForTabBar={phoneRole} />
     </div>
   );
 }

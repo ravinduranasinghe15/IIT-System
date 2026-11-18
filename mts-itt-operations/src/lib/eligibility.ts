@@ -3,6 +3,7 @@ import type { BillableStatus, Movement } from "@/types/movement";
 import type { UnitMode } from "@/types/payment";
 import { operationalDay } from "./date-utils";
 import { hasVerifiedDriverLog } from "./driver-logs";
+import { unreviewedMismatches } from "./cross-check";
 
 /** Number of billable/payable units for a movement. A trailer with 2 x 20FT is ONE journey but may be 1 or 2 units. */
 export function unitsFor(m: Movement, mode: UnitMode): number {
@@ -39,7 +40,10 @@ export function hasVerifiedChits(db: DB, movementId: string): boolean {
 /** Chits verified AND the movement's driver log sheet verified: "Pending Chits" / "Pending Driver Log" otherwise. */
 function evidenceStatus(m: Movement, db: DB): BillableStatus {
   if (!hasVerifiedChits(db, m.id)) return "Pending Chits";
-  return hasVerifiedDriverLog(db, m) ? "Billable" : "Pending Driver Log";
+  if (!hasVerifiedDriverLog(db, m)) return "Pending Driver Log";
+  // compare everything before billing: documents the system verified by itself must agree with the terminal data, the
+  // roster and each other; a mismatch has to be reviewed (verified) by a person first
+  return unreviewedMismatches(db, m).length ? "Blocked – Mismatch" : "Billable";
 }
 
 export function billableStatus(m: Movement, db: DB): BillableStatus {

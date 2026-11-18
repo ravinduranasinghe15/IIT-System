@@ -4,6 +4,7 @@ import type { TerminalCode } from "@/types/terminal";
 import { addDays, demoToday, parseLooseDate } from "./date-utils";
 import { fingerprintOf, suggestMapping } from "./excel-parser";
 import { resolvePrimeMover } from "./import-processor";
+import { rosterDriverFor } from "./driver-logs";
 
 /**
  * Terminal report adapters. Every terminal sends its own layout; each adapter turns it into the ONE common format the
@@ -110,31 +111,16 @@ const sizeOf = (s: string): string => {
   return s;
 };
 
-/** Shift (and operational date) a timestamp falls in: Morning 7-15, Afternoon 15-23, Night 23-7. */
-function shiftOf(iso: string): { date: string; shift: "Morning" | "Afternoon" | "Night" } {
-  const date = iso.slice(0, 10);
-  const h = Number(iso.slice(11, 13));
-  if (h >= 7 && h < 15) return { date, shift: "Morning" };
-  if (h >= 15 && h < 23) return { date, shift: "Afternoon" };
-  return { date: h >= 23 ? date : addDays(date, -1), shift: "Night" };
-}
-
 /**
- * The reports carry no driver. Every driver has one truck, so the driver is the one assigned to the truck.
- * When a truck has several drivers (one per shift), the roster says who was on it at that time.
+ * The reports carry no driver and drivers are not tied to a truck: the driver is whoever the roster has on that truck for
+ * that date and shift. (A verified driver log sheet can correct it later.)
  */
-function driverFor(db: DB, truck: string, loading: string): { name: string; source: "roster" | "assigned" | "none" } {
+function driverFor(db: DB, truck: string, loading: string): { name: string; source: "roster" | "none" } {
   const pm = truck ? resolvePrimeMover(truck, db) : null;
-  if (!pm) return { name: "", source: "none" };
-  const ofTruck = db.drivers.filter((x) => x.primeMoverId === pm.id);
-  if (ofTruck.length > 1 && loading) {
-    const { date, shift } = shiftOf(loading.replace(" ", "T"));
-    const entry = db.roster.find((r) => r.date === date && r.shift === shift && r.primeMoverId === pm.id && r.attendance !== "Absent");
-    const d = entry ? db.drivers.find((x) => x.id === entry.driverId) : undefined;
-    if (d) return { name: d.name, source: "roster" };
-  }
-  const primary = (pm.driverId ? db.drivers.find((x) => x.id === pm.driverId) : undefined) ?? ofTruck[0];
-  return primary ? { name: primary.name, source: "assigned" } : { name: "", source: "none" };
+  if (!pm || !loading) return { name: "", source: "none" };
+  const id = rosterDriverFor(db, pm.id, loading.replace(" ", "T"));
+  const d = id ? db.drivers.find((x) => x.id === id) : undefined;
+  return d ? { name: d.name, source: "roster" } : { name: "", source: "none" };
 }
 
 interface Unit {
@@ -151,7 +137,7 @@ function toRows(db: DB, origin: TerminalCode, units: Unit[]) {
   const rows: CommonRow[] = [];
   const display: Record<string, string>[] = [];
   let paired = 0;
-  const bySource = { roster: 0, assigned: 0, none: 0 };
+  const bySource = { roster: 0, none: 0 };
   const used = new Set<number>();
   units.forEach((u, i) => {
     if (used.has(i)) return;
@@ -180,7 +166,7 @@ function toRows(db: DB, origin: TerminalCode, units: Unit[]) {
       Status: "In Transit",
     };
     rows.push(row);
-    display.push({ ...row, "Source row(s)": group.map((g) => `Row ${g.rowNo}`).join(", "), "Driver source": drv.source === "roster" ? "Roster (driver on that truck and shift)" : drv.source === "assigned" ? "Truck's assigned driver" : "Not found" });
+    display.push({ ...row, "Source row(s)": group.map((g) => `Row ${g.rowNo}`).join(", "), "Driver source": drv.source === "roster" ? "Roster (driver on that truck and shift)" : "Not on the roster" });
   });
   return { rows, display, paired, bySource };
 }
@@ -189,10 +175,9 @@ function commonNotes(origin: TerminalCode, r: ReturnType<typeof toRows>): string
   const n = [`Origin set to ${origin}: the report is the ${origin} terminal's own list of containers leaving it.`, "Status set to In Transit: delivery is confirmed later by the verified discharge chit."];
   if (r.paired) n.push(`${r.paired} pair(s) of 20 ft containers on the same truck and time were combined into one journey with two containers.`);
   const d: string[] = [];
-  if (r.bySource.roster) d.push(`${r.bySource.roster} from the roster (truck shared by several drivers)`);
-  if (r.bySource.assigned) d.push(`${r.bySource.assigned} from the truck's assigned driver`);
-  if (r.bySource.none) d.push(`${r.bySource.none} not found`);
-  n.push(`The report has no driver column. Every driver has one truck, so the truck's driver is used: ${d.join(", ") || "none"}.`);
+  if (r.bySource.roster) d.push(`${r.bySource.roster} from the roster`);
+  if (r.bySource.none) d.push(`${r.bySource.none} not on the roster (the driver log will supply them)`);
+  n.push(`The report has no driver column. Drivers are not tied to a truck, so the driver is taken from the roster (truck, date and shift): ${d.join(", ") || "none"}.`);
   return n;
 }
 
@@ -236,7 +221,7 @@ function cwit(db: DB, sheet: SheetData): NormalisedReport | null {
       { source: "Terminal", common: "Destination" },
       { source: "Truck Visit Truck", common: "Truck", how: "LY5520 → matched to the fleet" },
       { source: "Unit Time Out", common: "Load Time", how: "date serial → yyyy-MM-dd HH:mm" },
-      { source: "(not in report)", common: "Driver", how: "the driver of that truck" },
+      { source: "(not in report)", common: "Driver", how: "the driver the roster has on that truck and shift" },
       { source: "(not in report)", common: "Status", how: "In Transit" },
     ],
   };
@@ -276,7 +261,7 @@ function sagt(db: DB, sheet: SheetData): NormalisedReport | null {
       { source: "Terminal", common: "Destination" },
       { source: "Truck Number", common: "Truck", how: "LY-6181 → matched to the fleet" },
       { source: "Entered Time", common: "Load Time", how: "“20-Oct 08:40” → yyyy-MM-dd HH:mm (year added)" },
-      { source: "(not in report)", common: "Driver", how: "the driver of that truck" },
+      { source: "(not in report)", common: "Driver", how: "the driver the roster has on that truck and shift" },
       { source: "(not in report)", common: "Status", how: "In Transit" },
     ],
   };

@@ -3,8 +3,12 @@ import type { DocType, DriverLogMeta, EvidenceDoc, OcrField } from "@/types/evid
 import { actorOf, logAudit, nextId, nowOf } from "../db-helpers";
 import { ledgerValueFor, sameValue, simulateExtraction } from "../ocr-sim";
 import { makeEvent } from "./movement";
-import { DEMO_CHIT_DIR, demoChitByName, demoDriverLogByName, type DemoChit } from "@/data/demo-chits";
+import { DEMO_CHIT_DIR, demoDriverLogByName, type DemoChit } from "@/data/demo-chits";
+import { anyDemoChitByName } from "@/data/demo-chit-pack";
+import { demoPackLogByName } from "@/data/demo-driver-logs";
 import { logFieldsFromMeta } from "../driver-logs";
+import { applyLogDriver } from "../movement-driver";
+import { AUTO_VERIFIER_NAME, docMismatches } from "../cross-check";
 import { PRIORITY_BY_TYPE, raiseExceptions } from "../reconciliation";
 
 /** Stored as a data URL only below this size – larger files keep metadata only (browser storage limits). */
@@ -126,7 +130,7 @@ export function runExtraction(db: DB, docId: string): EvidenceDoc | null {
   const actor = actorOf(db);
   const now = nowOf(db);
   // The prepared demo chit pack has fixed, hard-coded extraction values; anything else uses the simulation.
-  const demo = demoChitByName(doc.name) ?? demoDriverLogByName(doc.name);
+  const demo = anyDemoChitByName(doc.name) ?? demoDriverLogByName(doc.name) ?? demoPackLogByName(doc.name);
   const logMeta = doc.docType === "Driver Log Sheet" ? doc.driverLog : undefined;
   const sim = demo || logMeta ? null : simulateExtraction(doc, db);
   const fields = demo ? demo.fields.map((f) => ({ ...f })) : logMeta ? logFieldsFromMeta(db, logMeta) : sim!.fields;
@@ -155,7 +159,7 @@ export function runExtraction(db: DB, docId: string): EvidenceDoc | null {
   return doc;
 }
 
-export const AUTO_VERIFIER = "System (auto)";
+export const AUTO_VERIFIER = AUTO_VERIFIER_NAME;
 
 /** A chit's confidence score is its weakest field, so one doubtful field keeps it out of auto-verification. */
 export function chitConfidence(doc: EvidenceDoc): number | null {
@@ -164,8 +168,8 @@ export function chitConfidence(doc: EvidenceDoc): number | null {
 }
 
 /**
- * Loading / discharge chits and driver log sheets whose confidence score reaches the Settings threshold, are linked to a movement (logs: have their driver, lorry and shift filled in) and agree
- * with its ledger are verified automatically. Everything else stays "Needs Verification" for a person.
+ * Loading / discharge chits and driver log sheets whose confidence score reaches the Settings threshold, are linked to a movement (logs: have their driver, lorry and shift filled in) and pass the
+ * cross-check (cross-check.ts: terminal data, roster and the other documents) are verified automatically. Everything else stays "Needs Verification" for a person.
  */
 export function autoVerifyIfConfident(db: DB, docId: string): boolean {
   const doc = db.documents.find((d) => d.id === docId);
@@ -177,10 +181,12 @@ export function autoVerifyIfConfident(db: DB, docId: string): boolean {
   if (score === null || score < db.settings.ocrConfidenceThreshold) return false;
   // a log sheet is matched by driver / lorry / shift (not one movement), so it needs its header details instead
   if (isLog ? !doc.driverLog?.driverId || !doc.driverLog.primeMoverId : !m) return false;
-  for (const f of doc.ocr.fields) {
-    if (!m) break;
-    const ledger = ledgerValueFor(f.key, m, doc, db);
-    if (ledger !== null && ledger !== "" && f.value && !sameValue(f.value, ledger, f.key, db)) return false;
+  // cross-check against the terminal data, the roster and the other documents: any mismatch needs a person
+  const issues = docMismatches(db, doc);
+  if (issues.length) {
+    const note = `Not verified automatically – ${issues.length} mismatch(es): ${issues.map((i) => i.message).join("; ")}`;
+    if (doc.history[doc.history.length - 1]?.action !== note) doc.history.push({ at: nowOf(db), by: AUTO_VERIFIER_NAME, action: note });
+    return false;
   }
   return verifyExtraction(db, docId, doc.ocr.fields, true).ok;
 }
@@ -239,6 +245,7 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[], auto
   if (m && differences.length) {
     m.events.push(makeEvent(db, "document", `Verified ${doc.docType} ${doc.id} differs from the ledger – ${differences.join("; ")}. Review in the exception queue if needed.`));
   }
+  applyLogDriver(db, doc);
   logAudit(db, {
     action: auto ? "Extraction Auto-Verified" : "Extraction Verified (human)",
     module: "Evidence",

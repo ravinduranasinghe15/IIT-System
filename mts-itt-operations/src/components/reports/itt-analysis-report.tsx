@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { CHART_COLORS } from "@/lib/constants";
 import { demoToday, formatDate } from "@/lib/date-utils";
 import { downloadBlob } from "@/lib/export-utils";
+import { ShiftFilter, type ShiftValue } from "@/components/shared/shift-filter";
 import { buildIttAnalysis, periodRange, SOURCE_TERMINALS, type IttPeriod } from "@/lib/itt-analysis";
 import { cn, formatMoney, formatNumber } from "@/lib/utils";
 import type { TerminalCode } from "@/types/terminal";
@@ -71,15 +72,16 @@ export function IttAnalysisReport() {
   const [anchor, setAnchor] = useState(today);
   const [custom, setCustom] = useState({ from: `${today.slice(0, 7)}-01`, to: today });
   const [focus, setFocus] = useState<TerminalCode>("SAGT");
+  const [shift, setShift] = useState<ShiftValue>("");
   const ref = useRef<HTMLDivElement>(null);
 
   const { from, to } = useMemo(() => periodRange(kind, anchor, custom), [kind, anchor, custom]);
-  const d = useMemo(() => buildIttAnalysis(db, from, to, canFinancial, focus), [db, from, to, canFinancial, focus]);
+  const d = useMemo(() => buildIttAnalysis(db, from, to, canFinancial, focus, shift), [db, from, to, canFinancial, focus, shift]);
   const currency = db.settings.currency;
   const money = (n: number) => formatMoney(n, currency);
-  const title = `${kind === "daily" ? "Daily" : kind === "weekly" ? "Weekly" : kind === "monthly" ? "Monthly" : "Period"} Analysis Report - ITT (MTS) ${from}${to !== from ? ` / ${to.slice(8)}` : ""} (7-7) Time`;
+  const title = `${kind === "daily" ? "Daily" : kind === "weekly" ? "Weekly" : kind === "monthly" ? "Monthly" : "Period"} Analysis Report - ITT (MTS) ${from}${to !== from ? ` / ${to.slice(8)}` : ""} (7-7) Time${shift ? ` - ${shift} shift (${shift === "Morning" ? "7am-7pm" : "7pm-7am"})` : ""}`;
   const periodLabel = from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`;
-  const base = `mts-itt-analysis_${kind}_${from}${to !== from ? `_to_${to}` : ""}`;
+  const base = `mts-itt-analysis_${kind}_${from}${to !== from ? `_to_${to}` : ""}${shift ? `_${shift.toLowerCase()}` : ""}`;
   const empty = d.totalTrips === 0;
 
   const kpis: { label: string; value: string; hint?: string }[] = [
@@ -236,9 +238,13 @@ export function IttAnalysisReport() {
           <Field label="Pickup / drop-off terminal">
             <NativeSelect value={focus} onValueChange={(v) => setFocus(v as TerminalCode)} options={SOURCE_TERMINALS} className="w-32" />
           </Field>
+          <Field label="Shift">
+            <ShiftFilter value={shift} onChange={setShift} />
+          </Field>
           <div className="pb-1 text-xs text-slate">
             <span className="font-medium text-navy">{periodLabel}</span> · 07:00 → 07:00 operational days
           </div>
+          {shift && <div className="basis-full text-xs text-amber-700">Trips, revenue and drivers are for the {shift} shift only. GPS and fuel-station figures are recorded per truck per day, so they still cover the whole day.</div>}
         </div>
       </SectionCard>
 
@@ -327,7 +333,7 @@ export function IttAnalysisReport() {
               <ChartCard title="Total trips vs size" note="share of journeys">
                 <Donut data={d.size.map((s) => ({ name: s.name, value: s.journeys }))} h={260} />
               </ChartCard>
-              <ChartCard title="Permanent vs temporary drivers" note="temporary = not the truck's assigned driver">
+              <ChartCard title="Permanent vs temporary drivers" note="temporary = a truck the driver did not mainly drive in this period">
                 <Donut data={[{ name: "Permanent driver", value: d.permanent.trips }, { name: "Temporary driver", value: d.temporary.trips }].filter((x) => x.value > 0)} />
                 <p className="text-center text-[11px] text-slate">
                   Trips: permanent {d.permanent.trips} ({pct(d.permanent.trips, permTrips)}) · temporary {d.temporary.trips} ({pct(d.temporary.trips, permTrips)})

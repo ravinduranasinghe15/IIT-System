@@ -5,7 +5,7 @@ import { actorOf, logAudit, nextId, notify, nowOf } from "../db-helpers";
 import type { ProcessedRow } from "../import-processor";
 import { createMovement } from "./movement";
 import { linkDocument } from "./evidence";
-import { demoChitByName } from "@/data/demo-chits";
+import { anyDemoChitByName } from "@/data/demo-chit-pack";
 
 export interface CommitImportInput {
   fileName: string;
@@ -38,7 +38,7 @@ function autoLinkPendingChits(db: DB, movementIds: string[]): number {
   let linked = 0;
   for (const doc of db.documents) {
     if (doc.movementId || (doc.docType !== "Loading Chit" && doc.docType !== "Discharge Chit")) continue;
-    const container = (demoChitByName(doc.name)?.linkContainer ?? doc.ocr?.fields.find((f) => f.key === "containerNo")?.value ?? "").trim().toUpperCase();
+    const container = (anyDemoChitByName(doc.name)?.linkContainer ?? doc.ocr?.fields.find((f) => f.key === "containerNo")?.value ?? "").trim().toUpperCase();
     if (!container) continue;
     const m = fresh.find((x) => x.containerNos.some((c) => c.toUpperCase() === container));
     if (m && linkDocument(db, doc.id, m.id).ok) linked++;

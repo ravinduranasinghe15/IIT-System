@@ -6,6 +6,8 @@ const SERVER_RUN_ID = String(Date.now());
 
 const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_SERVER_RUN_ID: SERVER_RUN_ID },
+  // a separate build folder can be used for checks while the dev server runs: NEXT_DIST_DIR=.next-check npx next build
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   /* config options here */
   experimental: {
     agentFeedback: true,

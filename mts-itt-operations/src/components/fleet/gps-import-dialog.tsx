@@ -109,7 +109,7 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
           )}
           {error && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
           <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-sm">
-            <span className="text-slate">No file handy? Use the sample Trips export (PM-001 to PM-009, 1–12 Nov 2026).</span>
+            <span className="text-slate">No file handy? Use the sample Trips export (PM-001 to PM-009, 13 Oct – 12 Nov 2026).</span>
             <Button variant="outline" size="sm" render={<a href="/documents/13.11.2026_Trips-track-my-car.xlsx" download />}>
               <Download /> Sample file
             </Button>

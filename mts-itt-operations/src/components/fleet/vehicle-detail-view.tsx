@@ -16,7 +16,8 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { daysToService, serviceStatusOf } from "@/lib/fleet-utils";
 import { reconcileFuel } from "@/lib/fuel-reconciliation";
-import { formatDate, formatDateTime } from "@/lib/date-utils";
+import { formatDate, formatDateTime, realToday } from "@/lib/date-utils";
+import { driverOnTruck } from "@/lib/roster-rules";
 import { formatNumber } from "@/lib/utils";
 import type { Movement } from "@/types/movement";
 import type { Driver, RosterEntry } from "@/types/driver";
@@ -26,6 +27,7 @@ import { FuelTable } from "./fuel-table";
 import { FuelReconciliation } from "./fuel-reconciliation";
 import { FuelEntryDialog } from "./fuel-entry-dialog";
 import { ServiceLogDialog, VehicleEditDialog } from "./vehicle-dialogs";
+import { VehicleCosts } from "./vehicle-costs";
 
 interface AssignmentRow {
   driverId: string;
@@ -48,7 +50,7 @@ function buildAssignments(roster: RosterEntry[], drivers: Driver[], movements: M
     return row;
   };
   for (const r of roster) {
-    if (r.primeMoverId !== vehicleId || (r.shift !== "Morning" && r.shift !== "Afternoon" && r.shift !== "Night")) continue;
+    if (r.primeMoverId !== vehicleId || (r.shift !== "Morning" && r.shift !== "Night")) continue;
     const row = get(r.driverId);
     row.shifts += 1;
     row.firstDate = !row.firstDate || r.date < row.firstDate ? r.date : row.firstDate;
@@ -70,8 +72,8 @@ export function VehicleDetailView() {
   const movements = useMemo(() => db.movements.filter((m) => m.primeMoverId === id).sort((a, b) => (b.loadingAt ?? b.createdAt).localeCompare(a.loadingAt ?? a.createdAt)), [db.movements, id]);
   const fuel = useMemo(() => db.fuelRecords.filter((r) => r.vehicleId === id), [db.fuelRecords, id]);
   const assignments = useMemo(
-    () => buildAssignments(db.roster, db.drivers, movements, db.primeMovers.find((v) => v.id === id)?.driverId ?? null, id),
-    [db.roster, db.drivers, db.primeMovers, movements, id],
+    () => buildAssignments(db.roster, db.drivers, movements, driverOnTruck(db, id, realToday()), id),
+    [db, movements, id],
   );
   const gpsHistory = useMemo(() => {
     return db.gpsImports
@@ -86,7 +88,8 @@ export function VehicleDetailView() {
   if (!vehicle) return <EmptyState title="Vehicle not found" description={`No prime mover with ID ${id}.`} action={<Button render={<Link href="/fleet" />}>Back to fleet</Button>} />;
 
   const trailer = vehicle.trailerId ? db.trailers.find((t) => t.id === vehicle.trailerId) : null;
-  const driver = vehicle.driverId ? db.drivers.find((d) => d.id === vehicle.driverId) : null;
+  const todayDriverId = driverOnTruck(db, id, realToday());
+  const driver = todayDriverId ? db.drivers.find((d) => d.id === todayDriverId) : null;
   const svc = serviceStatusOf(vehicle.nextServiceDate);
   const left = daysToService(vehicle.nextServiceDate);
   const manage = can("fleet.manage");
@@ -158,6 +161,7 @@ export function VehicleDetailView() {
       <Tabs defaultValue="details">
         <TabsList className="mb-1 h-auto flex-wrap">
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="costs">Fuel &amp; maintenance spend</TabsTrigger>
           <TabsTrigger value="movements">Movements ({movements.length})</TabsTrigger>
           <TabsTrigger value="drivers">Driver assignments</TabsTrigger>
           <TabsTrigger value="service">Service records</TabsTrigger>
@@ -181,15 +185,19 @@ export function VehicleDetailView() {
             </SectionCard>
             <SectionCard title="Assignments">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <KeyValue label="Current driver">{driver ? <Link href={`/drivers/${driver.id}`} className="text-brand hover:underline">{driver.name} ({driver.id})</Link> : "Unassigned"}</KeyValue>
+                <KeyValue label="Driver today">{driver ? <Link href={`/drivers/${driver.id}`} className="text-brand hover:underline">{driver.name} ({driver.id})</Link> : "Not rostered today"}</KeyValue>
                 <KeyValue label="Driver status">{driver ? <StatusBadge status={driver.status} /> : "—"}</KeyValue>
                 <KeyValue label="Trailer">{trailer ? `${trailer.id} · ${trailer.regNo}` : "None"}</KeyValue>
                 <KeyValue label="Trailer type">{trailer ? trailer.trailerType : "—"}</KeyValue>
                 <KeyValue label="Capacity" className="col-span-2">{trailer?.capacity ?? "—"}</KeyValue>
               </dl>
-              <p className="mt-3 text-xs text-slate">Vehicle, trailer and registration data is maintained in Master Data; driver assignment is changed from the driver profile.</p>
+              <p className="mt-3 text-xs text-slate">Vehicle, trailer and registration data is maintained in Master Data; drivers are put on this truck shift by shift on the roster.</p>
             </SectionCard>
           </div>
+        </TabsContent>
+
+        <TabsContent value="costs">
+          <VehicleCosts vehicleId={id} />
         </TabsContent>
 
         <TabsContent value="movements">
@@ -199,7 +207,7 @@ export function VehicleDetailView() {
         </TabsContent>
 
         <TabsContent value="drivers">
-          <SectionCard title="Driver assignments" description="Current driver plus drivers rostered on, or who moved containers with, this prime mover." bodyClassName="p-0">
+          <SectionCard title="Driver assignments" description="Drivers rostered on, or who moved containers with, this prime mover (drivers are not tied to one truck)." bodyClassName="p-0">
             <DataTable columns={asgCols} rows={assignments} getRowId={(a) => a.driverId} initialSort={{ key: "sh", dir: "desc" }} emptyTitle="No driver assignments" />
           </SectionCard>
         </TabsContent>

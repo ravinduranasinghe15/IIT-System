@@ -1,6 +1,6 @@
 // Generates public/documents/13.11.2026_Trips-track-my-car.xlsx – a DEMO Track My Car "Trips" export in the exact layout
 // MTS receives from their GPS system (title row, then per day: title row, header row, one row per trip, blank row).
-// Covers PM-001..PM-009, 01.11.2026 – 12.11.2026 (deterministic). The real export has no fuel readings – the importer
+// Covers PM-001..PM-009, 13.10.2026 – 12.11.2026, one month (deterministic). The real export has no fuel readings – the importer
 // totals trips per vehicle per day and estimates fuel from distance.
 //   node scripts/generate-trackmycar.mjs
 import fs from "node:fs";
@@ -49,13 +49,13 @@ const PLACES = [
 const pad = (n) => String(n).padStart(2, "0");
 const dmy = (d) => `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
 const hms = (s) => `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-const FIRST = Date.UTC(2026, 10, 1);
-const DAYS = 12;
+const FIRST = Date.UTC(2026, 9, 13);
+const DAYS = 31;
 const day = (i) => new Date(FIRST + i * 86400000);
 
 const aoa = [];
 const merges = [];
-aoa.push([`13.11.2026 08:12:41 (0.612)sTrips from 01.11.2026 00:00 to 13.11.2026 00:00`, "", "", "", "", "", "", "", ""]);
+aoa.push([`13.11.2026 08:12:41 (0.612)sTrips from 13.10.2026 00:00 to 13.11.2026 00:00`, "", "", "", "", "", "", "", ""]);
 for (let di = 0; di < DAYS; di++) {
   const d = day(di);
   const next = day(di + 1);
@@ -65,7 +65,7 @@ for (let di = 0; di < DAYS; di++) {
   aoa.push([`${dmy(d)} 00:00 - ${dmy(next)} 00:00`, "", "", "", "", "", "", "", ""]);
   aoa.push(["Vehicle", "Mileage", "Trip start time", "Trip end time", "Duration", "Geofence", "Start place", "Stop place", "Driver name"]);
   for (let v = 0; v < 9; v++) {
-    const inWorkshop = v === 5 && di >= 10; // PM-006 in workshop from 11 Nov
+    const inWorkshop = v === 5 && di >= 29; // PM-006 in workshop from 11 Nov
     if (inWorkshop) continue;
     const total = sunday ? int(30, 80) : int(95, 185);
     const n = sunday ? int(1, 2) : int(2, 5);

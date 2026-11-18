@@ -3,6 +3,7 @@ import type { Movement, MovementStatus } from "@/types/movement";
 import type { ContainerSize, TerminalCode } from "@/types/terminal";
 import { addDays, daysBetween, demoToday, eachDay, formatDay, formatMonth, minutesBetween, operationalDay } from "./date-utils";
 import { billableStatus, movementDay, payEligibility, unitsFor } from "./eligibility";
+import { movementShift } from "./driver-logs";
 import { findRate } from "./invoice-calculator";
 import { round2 } from "./payment-calculator";
 import { formatMoney, formatNumber } from "./utils";
@@ -34,6 +35,8 @@ export interface ReportFilters {
   route: string;
   size: "" | ContainerSize;
   status: "" | MovementStatus;
+  /** Shift the movement was loaded in (Morning 07:00–19:00, Night 19:00–07:00); "" = both */
+  shift: "" | "Morning" | "Night";
 }
 export type FilterKey = keyof ReportFilters;
 
@@ -85,7 +88,7 @@ export interface ReportMeta {
   filters: FilterKey[];
 }
 
-const MOVEMENT_FILTERS: FilterKey[] = ["from", "to", "terminal", "driverId", "vehicleId", "route", "size", "status"];
+const MOVEMENT_FILTERS: FilterKey[] = ["from", "to", "terminal", "driverId", "vehicleId", "route", "size", "status", "shift"];
 
 export const REPORTS: ReportMeta[] = [
   { type: "daily", label: "Daily Movement", group: "Movement", financial: false, filters: MOVEMENT_FILTERS, description: "Journeys and container units per 07:00→07:00 operational day." },
@@ -106,7 +109,7 @@ export const reportMeta = (t: ReportType) => REPORTS.find((r) => r.type === t) a
 
 export function defaultFilters(): ReportFilters {
   const today = demoToday();
-  return { from: `${today.slice(0, 7)}-01`, to: today, terminal: "", driverId: "", vehicleId: "", route: "", size: "", status: "" };
+  return { from: `${today.slice(0, 7)}-01`, to: today, terminal: "", driverId: "", vehicleId: "", route: "", size: "", status: "", shift: "" };
 }
 
 export function routeOptions(db: DB) {
@@ -198,6 +201,7 @@ export function filterMovements(db: DB, f: ReportFilters): MovementInfo[] {
     if (f.route && `${m.sourceTerminal}-${m.destinationTerminal}` !== f.route) continue;
     if (f.size && m.containerSize !== f.size) continue;
     if (f.status && m.status !== f.status) continue;
+    if (f.shift && movementShift(m) !== f.shift) continue;
     out.push({ m, day });
   }
   return out;
@@ -757,7 +761,7 @@ function exceptionReport(f: ReportFilters, db: DB): ReportResult {
   const start = db.settings.opDayStartHour;
   const mv = new Map(db.movements.map((m) => [m.id, m]));
   const userName = (id: string | null) => (id ? (db.users.find((u) => u.id === id)?.name ?? id) : "Unassigned");
-  const needsMovement = !!(f.driverId || f.vehicleId || f.route || f.size || f.status);
+  const needsMovement = !!(f.driverId || f.vehicleId || f.route || f.size || f.status || f.shift);
   const today = demoToday();
   const list = db.exceptions.filter((e) => {
     const day = operationalDay(e.reportedAt, start);
@@ -771,6 +775,7 @@ function exceptionReport(f: ReportFilters, db: DB): ReportResult {
       if (f.route && `${m.sourceTerminal}-${m.destinationTerminal}` !== f.route) return false;
       if (f.size && m.containerSize !== f.size) return false;
       if (f.status && m.status !== f.status) return false;
+      if (f.shift && movementShift(m) !== f.shift) return false;
     }
     return true;
   });
@@ -1241,7 +1246,8 @@ export function buildAnalytics(f: ReportFilters, db: DB, canFinancial: boolean):
       if (f.vehicleId && m.primeMoverId !== f.vehicleId) continue;
       if (f.route && `${m.sourceTerminal}-${m.destinationTerminal}` !== f.route) continue;
       if (f.size && m.containerSize !== f.size) continue;
-    } else if (f.driverId || f.vehicleId || f.route || f.size) continue;
+      if (f.shift && movementShift(m) !== f.shift) continue;
+    } else if (f.driverId || f.vehicleId || f.route || f.size || f.shift) continue;
     const o = exTrend.get(bucketKey(operationalDay(e.reportedAt, start), g));
     if (o) o.Opened += 1;
     if ((e.status === "Resolved" || e.status === "Rejected") && e.resolvedAt) {

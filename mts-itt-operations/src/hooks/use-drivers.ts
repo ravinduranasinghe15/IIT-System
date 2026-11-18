@@ -4,10 +4,11 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/contexts/app-context";
 import type { AttendanceStatus, DriverStatus } from "@/types/driver";
+import type { RosterPlan } from "@/lib/roster-generator";
 import {
-  assignPrimeMover,
   decideLeave,
   recordAttendance,
+  publishRoster,
   reportAbsence,
   type AbsenceInput,
   replaceDriver,
@@ -60,14 +61,14 @@ export function useDriverActions() {
         run(() => update((d) => replaceDriver(d, input)), () => ({ title: "Driver assigned", description: "The roster has been updated." })),
       register: (input: DriverInput) => run(() => update((d) => registerDriver(d, input)), (r) => ({ title: "Driver registered", description: `${r.name} (${r.id})` })),
       edit: (id: string, input: DriverInput) => run(() => update((d) => updateDriver(d, id, input)), (r) => `Saved changes to ${r.name}`),
-      assignPrimeMover: (driverId: string, pmId: string | null) =>
-        run(() => update((d) => assignPrimeMover(d, driverId, pmId)), () => (pmId ? `Assigned ${pmId}` : "Prime mover unassigned")),
       setStatus: (id: string, status: DriverStatus, note?: string) =>
         run(() => update((d) => setDriverStatus(d, id, status, note)), (r) => `${r.name} is now ${status}`),
       updateCell: (driverId: string, date: string, patch: RosterPatch) =>
         run(() => update((d) => updateRosterCell(d, driverId, date, patch)), () => "Roster updated"),
       reportAbsence: (input: AbsenceInput) =>
         run(() => update((d) => reportAbsence(d, input)), (r) => ({ title: "Absence reported", description: `${r.absentReason} – the Manager has been notified to arrange a replacement` })),
+      publishRoster: (plan: RosterPlan) =>
+        run(() => update((d) => publishRoster(d, plan)), (r) => ({ title: "Roster published", description: `${r.covered} of ${r.planned} truck-shifts covered, ${r.added} shifts added${r.removed ? `, ${r.removed} replaced` : ""}.` })),
       attendance: (driverId: string, date: string, status: AttendanceStatus) =>
         run(() => update((d) => recordAttendance(d, driverId, date, status)), () => `Marked ${status}`),
       requestLeave: (input: LeaveInput) => run(() => update((d) => requestLeave(d, input)), (r) => ({ title: "Leave request submitted", description: `${r.id} is pending approval` })),

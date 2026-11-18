@@ -12,6 +12,8 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { useApp } from "@/contexts/app-context";
 import { formatDateTime } from "@/lib/date-utils";
 import { OCR_DISCLAIMER, ledgerValueFor, sameValue } from "@/lib/ocr-sim";
+import { logLedgerValue, movementsCovered } from "@/lib/driver-logs";
+import { docMismatches } from "@/lib/cross-check";
 import { runExtraction, verifyExtraction } from "@/lib/mutations/evidence";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +38,9 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
   const threshold = db.settings.ocrConfidenceThreshold;
   const movement = doc.movementId ? (db.movements.find((m) => m.id === doc.movementId) ?? null) : null;
   const ocr = doc.ocr;
+  const isLog = doc.docType === "Driver Log Sheet" && !!doc.driverLog;
+  const coveredCount = isLog ? movementsCovered(db, doc).length : 0;
+  const mismatches = doc.ocr ? docMismatches(db, doc) : [];
   const [draft, setDraft] = useState<OcrField[] | null>(null);
   const [confirmVerify, setConfirmVerify] = useState(false);
   const [confirmRerun, setConfirmRerun] = useState(false);
@@ -98,7 +103,7 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
           </thead>
           <tbody>
             {fields.map((f) => {
-              const ledger = ledgerValueFor(f.key, movement, doc, db);
+              const ledger = isLog ? logLedgerValue(db, doc, f.key, f.value) : ledgerValueFor(f.key, movement, doc, db);
               const differs = ledger !== null && ledger !== "" && !!f.value && !sameValue(f.value, ledger, f.key, db);
               const low = f.confidence < threshold;
               return (
@@ -123,11 +128,16 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
                   </td>
                   <td className="hidden px-3 py-2 text-xs md:table-cell">
                     {ledger === null ? (
-                      <span className="text-slate">No linked movement</span>
+                      <span className="text-slate">{isLog ? "No covered movements" : "No linked movement"}</span>
                     ) : (
-                      <span className={cn("font-mono", differs && "font-semibold text-danger")}>
-                        {ledger || "—"}
-                        {differs && <span className="ml-1 font-sans text-[11px]">≠ differs</span>}
+                      <span className={cn("font-mono", differs && (isLog && f.key === "driver" ? "font-semibold text-amber-700" : "font-semibold text-danger"))}>
+                        {ledger || (isLog && f.key === "driver" ? "Nobody rostered" : "—")}
+                        {isLog && f.key === "driver" && ledger && !differs && <span className="ml-1 font-sans text-[11px] font-normal text-slate">(roster)</span>}
+                        {differs && (
+                          <span className="ml-1 block font-sans text-[11px] font-normal sm:inline">
+                            {isLog && f.key === "driver" ? `(roster) – a different driver drove; this verified sheet sets ${f.value} as the movements' driver` : "≠ differs"}
+                          </span>
+                        )}
                       </span>
                     )}
                   </td>
@@ -137,7 +147,26 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
           </tbody>
         </table>
       </div>
-      {!movement && (
+      {doc.ocr && (doc.docType === "Loading Chit" || doc.docType === "Discharge Chit" || isLog) && (
+        mismatches.length ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900" role="status">
+            <div className="mb-1 font-semibold">Cross-check: {mismatches.length} mismatch{mismatches.length === 1 ? "" : "es"} – not verified automatically</div>
+            <ul className="list-disc space-y-0.5 pl-4">{mismatches.map((x, i) => <li key={i}>{x.message}</li>)}</ul>
+            <div className="mt-1 text-amber-800">Check the original document, correct the values if it was misread, then verify.</div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800" role="status">
+            <CheckCircle2 className="size-3.5" /> Cross-check passed: {isLog ? "the sheet agrees with the covered movements, the roster and the chits" : "the chit agrees with the terminal data and any driver log"}.
+          </div>
+        )
+      )}
+      {isLog && (
+        <p className="text-xs text-slate">
+          Ledger values come from the {coveredCount} movement(s) this sheet covers (same lorry, date and shift) and, for the driver, from the roster.
+          {coveredCount === 0 && " No imported movement matches this lorry and shift yet."}
+        </p>
+      )}
+      {!isLog && !movement && (
         <p className="text-xs text-slate">Link this document to a movement to compare the extracted values against the ledger.</p>
       )}
 

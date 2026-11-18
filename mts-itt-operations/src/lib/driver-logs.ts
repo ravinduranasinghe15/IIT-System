@@ -20,6 +20,20 @@ export function shiftOfTime(iso: string): { date: string; shift: DriverLogMeta["
   return { date: hour < SHIFT_HOURS.Morning.start ? addDays(day, -1) : day, shift: "Night" };
 }
 
+/** Driver rostered on `truckId` for the shift that `loadingAt` falls in (an absent driver's replacement counts). */
+export function rosterDriverFor(db: DB, truckId: string | null, loadingAt: string | null): string | null {
+  if (!truckId || !loadingAt) return null;
+  const { date, shift } = shiftOfTime(loadingAt);
+  const entry = db.roster.find((r) => r.date === date && r.shift === shift && r.primeMoverId === truckId && r.attendance !== "Absent");
+  return entry?.driverId ?? null;
+}
+
+/** Shift a movement belongs to (the shift its loading time falls in), or null when it has no loading time. */
+export const movementShift = (m: Movement): DriverLogMeta["shift"] | null => (m.loadingAt ? shiftOfTime(m.loadingAt).shift : null);
+
+/** Keeps the movements of one shift ("" = all shifts). */
+export const filterByShift = (ms: Movement[], shift: "" | DriverLogMeta["shift"]): Movement[] => (shift ? ms.filter((m) => movementShift(m) === shift) : ms);
+
 export const driverLogSheets = (db: DB): EvidenceDoc[] => db.documents.filter((d) => d.docType === "Driver Log Sheet" && d.driverLog);
 
 /** Movements that are expected to appear on a driver log (legacy seed movements are exempt). */
@@ -29,12 +43,52 @@ export function logCovers(log: DriverLogMeta, m: Movement): boolean {
   if (!m.loadingAt) return false;
   const { date, shift } = shiftOfTime(m.loadingAt);
   if (log.date !== date || log.shift !== shift) return false;
-  return (!!log.primeMoverId && log.primeMoverId === m.primeMoverId) || (!!log.driverId && log.driverId === m.driverId);
+  // the lorry is the key (the report names the truck, and the sheet names the driver who actually drove it)
+  if (log.primeMoverId && m.primeMoverId) return log.primeMoverId === m.primeMoverId;
+  return !!log.driverId && log.driverId === m.driverId;
 }
 
 /** Movements a driver log sheet covers (a sheet is never linked to just one movement). */
 export function movementsCovered(db: DB, doc: EvidenceDoc): Movement[] {
   return doc.driverLog ? db.movements.filter((m) => needsLog(m) && logCovers(doc.driverLog!, m)) : [];
+}
+
+/**
+ * "Ledger" value of one extracted field of a driver log sheet. A sheet is not linked to a single movement, so its fields
+ * are compared with the movements it covers (same lorry, date and shift) and with the roster:
+ *  - Driver Name  -> the driver the roster has on that lorry and shift
+ *  - Lorry Number -> the lorry's registration
+ *  - Shift / Date -> the shift and operational date of the covered movements
+ *  - Trip n       -> the covered movement carrying that container
+ *  - Trips written -> container count over the covered movements
+ * Returns null when there is nothing to compare with (no covered movements).
+ */
+export function logLedgerValue(db: DB, doc: EvidenceDoc, key: string, value: string): string | null {
+  const meta = doc.driverLog;
+  if (!meta) return null;
+  const covered = movementsCovered(db, doc).sort((a, b) => (a.loadingAt ?? "").localeCompare(b.loadingAt ?? ""));
+  const pm = meta.primeMoverId ? db.primeMovers.find((p) => p.id === meta.primeMoverId) : null;
+  const entries = covered.flatMap((m) => m.containerNos.map((cn) => ({ cn: cn.toUpperCase(), text: `${cn} | ${m.containerSize.replace("FT", "")} | ${m.sourceTerminal} > ${m.destinationTerminal}` })));
+  switch (key) {
+    case "driver": {
+      const e = db.roster.find((r) => r.date === meta.date && r.shift === meta.shift && r.attendance !== "Absent" && (meta.primeMoverId ? r.primeMoverId === meta.primeMoverId : r.driverId === meta.driverId));
+      return e ? (db.drivers.find((d) => d.id === e.driverId)?.name ?? e.driverId) : "";
+    }
+    case "truckNo":
+      return pm ? pm.regNo : covered[0]?.primeMoverId ? (db.primeMovers.find((p) => p.id === covered[0].primeMoverId)?.regNo ?? "") : null;
+    case "shift":
+      return covered.length ? shiftOfTime(covered[0].loadingAt!).shift : null;
+    case "date":
+      return covered.length ? shiftOfTime(covered[0].loadingAt!).date : null;
+    case "tripTotal":
+      return covered.length ? String(entries.length) : null;
+    default: {
+      if (!/^trip\d+$/.test(key)) return null;
+      if (!covered.length) return null;
+      const cn = value.split("|")[0].trim().toUpperCase();
+      return entries.find((e) => e.cn === cn)?.text ?? "Not on the covered movements";
+    }
+  }
 }
 
 export function logsFor(db: DB, m: Movement): EvidenceDoc[] {

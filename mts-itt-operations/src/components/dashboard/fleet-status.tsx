@@ -27,7 +27,7 @@ export function FleetStatus({ rows }: { rows: FleetRow[] }) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/60 hover:bg-muted/60">
-              {["Vehicle", "Reg No", "Driver", "Status", "Today", "14 days"].map((h) => (
+              {["Vehicle", "Reg No", "Driver today", "Status", "Today", "14 days"].map((h) => (
                 <TableHead key={h} className="h-9 whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-slate">
                   {h}
                 </TableHead>

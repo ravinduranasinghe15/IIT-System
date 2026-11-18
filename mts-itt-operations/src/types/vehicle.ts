@@ -6,7 +6,6 @@ export interface PrimeMover {
   model: string;
   year: number;
   trailerId: string | null;
-  driverId: string | null;
   status: "Active" | "In Maintenance" | "Inactive";
   odometerKm: number;
   nextServiceDate: string;

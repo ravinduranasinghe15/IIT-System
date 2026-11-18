@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { useApp } from "@/contexts/app-context";
-import { DEMO_CHITS, demoChitByName, type DemoChit } from "@/data/demo-chits";
+import { DEMO_CHITS, type DemoChit } from "@/data/demo-chits";
+import { ALL_DEMO_CHITS, anyDemoChitByName } from "@/data/demo-chit-pack";
 import { submitDemoChit } from "@/lib/mutations/evidence";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +52,7 @@ export function ChitSubmitDialog({
     const ok: DemoChit[] = [];
     const bad: string[] = [];
     for (const f of files) {
-      const c = demoChitByName(f.name);
+      const c = anyDemoChitByName(f.name);
       if (c) ok.push(c);
       else bad.push(f.name);
     }
@@ -115,10 +116,22 @@ export function ChitSubmitDialog({
               <div className="text-center text-xs text-slate">
                 or{" "}
                 <button type="button" className="font-medium text-brand underline" onClick={() => setChits([...DEMO_CHITS])}>
-                  use the demo chit pack ({DEMO_CHITS.length} chits)
+                  use the small demo chit pack ({DEMO_CHITS.length} chits)
+                </button>
+                {" · "}
+                <button type="button" className="font-medium text-brand underline" onClick={() => setChits(ALL_DEMO_CHITS())}>
+                  use the full chit pack ({ALL_DEMO_CHITS().length} chits, 9 – 13 Nov)
                 </button>
               </div>
             </>
+          ) : chits.length > 12 ? (
+            <div className="rounded-lg border p-4 text-sm">
+              <div className="font-semibold text-ink">{chits.length} chits selected</div>
+              <div className="mt-1 text-xs text-slate">
+                {chits.filter((c) => c.docType === "Loading Chit").length} loading and {chits.filter((c) => c.docType === "Discharge Chit").length} discharge chits. Each is read, compared with the terminal data and any driver log, and verified automatically only if it is confident and everything agrees.
+              </div>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => setChits([])}>Clear selection</Button>
+            </div>
           ) : (
             <ul className="divide-y rounded-lg border">
               {chits.map((c) => (
@@ -160,7 +173,7 @@ export function ChitSubmitDialog({
       {phase === "results" && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-            <CheckCircle2 className="size-4" /> {results.length} chit(s) linked to movements. Chits at or above {threshold}% confidence are verified automatically; review the others manually.
+            <CheckCircle2 className="size-4" /> {results.length} chit(s) linked to movements. {results.filter((r) => db.documents.find((x) => x.id === r.docId)?.ocr?.verified).length} verified automatically (confident and in agreement with the terminal data and any driver log); the others wait for a person.
           </div>
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">

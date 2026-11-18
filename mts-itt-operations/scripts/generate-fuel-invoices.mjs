@@ -1,7 +1,7 @@
 // Generates the sample fuel-station invoice file (CSV) and the matching hard-coded data module.
 //   node scripts/generate-fuel-invoices.mjs
 // Invoices are derived from the Track My Car Trips sample so the reconciliation tells a clear story:
-// most trucks within 5%, three flagged (PM-004 +9%, PM-007 +14%, PM-008 -8%).
+// one month (13 Oct – 12 Nov) of fuel stops every 3-5 days per truck; most trucks within 5% each month, three flagged (PM-004 +9%, PM-007 +14%, PM-008 -8%).
 // PM-001 is short by exactly the sample receipt (120 L, 13 Nov): adding that receipt closes its gap.
 import fs from "node:fs";
 import path from "node:path";
@@ -13,41 +13,70 @@ import XLSX from "xlsx";
 const REGS = ["LY-5516", "LY-5519", "LY-5520", "LY-5523", "LY-5525", "LY-5601", "LY-6178", "LY-6181", "LY-5321"];
 const tripsWb = XLSX.readFile(path.join(root, "public", "documents", "13.11.2026_Trips-track-my-car.xlsx"));
 const tripRows = XLSX.utils.sheet_to_json(tripsWb.Sheets[tripsWb.SheetNames[0]], { header: 1, raw: false, defval: "" });
-const gps = {};
+// km per vehicle per month (the trips file runs 13 Oct – 12 Nov)
+const gpsByMonth = {}; // { "PM-001": { "2026-10": litres, "2026-11": litres } }
 const reg = {};
 REGS.forEach((r, i) => {
   const id = `PM-${String(i + 1).padStart(3, "0")}`;
   reg[id] = r;
-  const km = tripRows.filter((r2) => r2[0] === r).reduce((s, r2) => s + Number.parseFloat(r2[1]), 0);
-  gps[id] = Math.round(km * 0.38 * 10) / 10;
+  gpsByMonth[id] = {};
+  for (const r2 of tripRows) {
+    if (r2[0] !== r) continue;
+    const m = /(\d{2})\.(\d{2})\.(\d{4})\s*$/.exec(String(r2[2]));
+    if (!m) continue;
+    const month = `${m[3]}-${m[2]}`;
+    gpsByMonth[id][month] = (gpsByMonth[id][month] ?? 0) + Number.parseFloat(r2[1]) * 0.38;
+  }
 });
 
 const FACTOR = { "PM-001": 1.01, "PM-002": 1.02, "PM-003": 1.035, "PM-004": 1.09, "PM-005": 0.99, "PM-006": 1.01, "PM-007": 1.14, "PM-008": 0.92, "PM-009": 1.005 };
-const SAMPLE_RECEIPT_LITRES = 120; // PM-001, added by hand via the sample receipt
+const SAMPLE_RECEIPT_LITRES = 120; // PM-001, added by hand via the sample receipt (13 Nov)
 const STATIONS = ["Lanka Fuel Station, Peliyagoda", "Lanka Fuel Station, Kelaniya", "Western Fuel Centre, Wattala"];
-const DATES = ["2026-11-03", "2026-11-07", "2026-11-11"];
 const RATE = 300;
 const r1 = (n) => Math.round(n * 10) / 10;
+// deterministic jitter
+let seed = 20261113;
+const rnd = () => {
+  seed = (seed + 0x6d2b79f5) >>> 0;
+  let t = seed;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const addDay = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
 const rows = [];
-for (const [vehicle, litresGps] of Object.entries(gps)) {
-  let target = r1(litresGps * FACTOR[vehicle]);
-  if (vehicle === "PM-001") target = r1(target - SAMPLE_RECEIPT_LITRES);
-  const parts = [0.34, 0.33];
-  let left = target;
-  DATES.forEach((date, i) => {
-    const litres = i < 2 ? r1(target * parts[i]) : r1(left);
-    left = r1(left - litres);
-    rows.push({
-      vehicleId: vehicle,
-      date,
-      litres,
-      amount: Math.round(litres * RATE),
-      station: STATIONS[(Number(vehicle.slice(3)) + i) % 3],
-      invoiceNo: `FS-${date.slice(5).replace("-", "")}-${vehicle.slice(3)}${i + 1}`,
+const gps = {}; // total GPS litres per vehicle, for the log below
+for (const vehicle of Object.keys(reg)) {
+  // fuel stops every 3-5 days from mid October to 12 November
+  const dates = [];
+  for (let d = addDay("2026-10-13", Math.floor(rnd() * 3) + 1); d <= "2026-11-12"; d = addDay(d, 3 + Math.floor(rnd() * 3))) dates.push(d);
+  gps[vehicle] = Object.values(gpsByMonth[vehicle]).reduce((a, b) => a + b, 0);
+  let n = 0;
+  for (const month of Object.keys(gpsByMonth[vehicle]).sort()) {
+    let target = r1(gpsByMonth[vehicle][month] * FACTOR[vehicle]);
+    if (vehicle === "PM-001" && month === "2026-11") target = r1(target - SAMPLE_RECEIPT_LITRES);
+    const ds = dates.filter((d) => d.startsWith(month));
+    if (!ds.length) continue;
+    const w = ds.map(() => 0.8 + rnd() * 0.4);
+    const wsum = w.reduce((a, b) => a + b, 0);
+    let left = target;
+    ds.forEach((date, i) => {
+      const litres = i === ds.length - 1 ? r1(left) : r1((target * w[i]) / wsum);
+      left = r1(left - litres);
+      n += 1;
+      rows.push({
+        vehicleId: vehicle,
+        date,
+        litres,
+        amount: Math.round(litres * RATE),
+        station: STATIONS[(Number(vehicle.slice(3)) + n) % 3],
+        invoiceNo: `FS-${date.slice(5).replace("-", "")}-${vehicle.slice(3)}${n}`,
+      });
     });
-  });
+  }
 }
+rows.sort((x, y) => (x.date === y.date ? x.vehicleId.localeCompare(y.vehicleId) : x.date < y.date ? -1 : 1));
 
 const header = "Date,Vehicle,Registration No,Fuel Station,Invoice No,Litres,Amount (LKR)";
 const csv = [header, ...rows.map((r) => [r.date, r.vehicleId, reg[r.vehicleId], `"${r.station}"`, r.invoiceNo, r.litres, r.amount].join(","))].join("\n");
@@ -62,6 +91,6 @@ export const DEMO_FUEL_INVOICES: DemoFuelInvoice[] = ${JSON.stringify(rows, null
 `;
 fs.writeFileSync(path.join(root, "src", "data", "demo-fuel-invoices.ts"), ts);
 for (const v of Object.keys(gps)) {
-  const inv = rows.filter((r) => r.vehicleId === v).reduce((s, r) => s + r.litres, 0) + (v === "PM-001" ? SAMPLE_RECEIPT_LITRES : 0);
-  console.log(v, "gps", r1(gps[v]), "invoice", r1(inv), `${(((inv - gps[v]) / gps[v]) * 100).toFixed(1)}%`);
+  const inv = rows.filter((r) => r.vehicleId === v).reduce((t, r) => t + r.litres, 0) + (v === "PM-001" ? SAMPLE_RECEIPT_LITRES : 0);
+  console.log(v, "gps", r1(gps[v]), "invoice", r1(inv), `${(((inv - gps[v]) / gps[v]) * 100).toFixed(1)}%`, "fill-ups", rows.filter((r) => r.vehicleId === v).length);
 }

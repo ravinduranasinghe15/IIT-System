@@ -17,12 +17,16 @@ Use the header **role switcher** to view the app as CEO, Manager, Supervisor
 or Driver (frontend permissions only). *Reset demo data* is in the user menu / Settings.
 
 ## Try the lifecycle
-1. **Terminal Imports → New**: upload `public/documents/sample-cwit.xlsx` or `sample-sagt.xlsx` (real SheetJS parsing, column mapping, validation, duplicate detection). Re-upload the same file → rejected as a duplicate file.
-2. **Movements / Exceptions**: imported rows become movements; missing/conflicting data raises exceptions that block billing until resolved (manager approval for material corrections).
-3. **Chits & Evidence**: attach chits, run simulated extraction, verify.
-4. **Driver Payments** (`/payments?action=generate`) and **Invoicing** (`/invoicing/new`): drafts computed from eligible movements, effective-dated rates, diesel adjustment; approve (simulated).
-5. **Fleet & Fuel**: GPS vs fuel-station reconciliation (originals never overwritten); import `13.11.2026_Trips-track-my-car.xlsx` (Track My Car Trips layout).
-6. **Reports**: 12 reports with charts and CSV/Excel export. **Settings → Audit logs** records every action.
+The full, step-by-step demo script (with the expected numbers) is in **[DEMO-FLOW.md](DEMO-FLOW.md)**. In short:
+1. **Terminal Imports → New** (Manager): import the CWIT and SAGT sample reports (13 Oct – 13 Nov, 544 movements). The driver of each movement comes from the **roster** (drivers are not tied to a truck).
+2. **Chits & Evidence** (Supervisor): *Submit chits* → full chit pack (180 chits). Chits at or above the confidence threshold **and** passing the **cross-check** (terminal data, roster, driver logs) are verified automatically; the rest wait for a person.
+3. **Driver Logs** (Supervisor): *Upload* → demo log pack. Verified logs set the real driver on the movements they cover.
+4. **Billable only after the comparison**: both chits verified, the driver log verified, and the documents agree with the terminal data, the roster and each other (**Movement → Billing readiness**). Anything the system refused to verify is reviewed by a person.
+5. **Driver Payments** and **Invoicing**: drafts from Billable movements only; approve (simulated).
+6. **Fleet & Fuel**: import `13.11.2026_Trips-track-my-car.xlsx` and the sample fuel invoices; GPS vs fuel-station reconciliation; per-vehicle **Fuel & maintenance spend**.
+7. **Roster** (generate for a week or date-wise, driver-not-coming), **Reports** (ITT analysis, shift filter), **CEO dashboard**, and the **assistant** (bot icon).
+
+Re-check the logic any time: `npx tsx scripts/verify-demo-flow.ts` (also `npx tsc --noEmit && npm run lint`).
 
 ## Architecture (see `docs/`)
 - `src/types` entity types · `src/data` deterministic seed · `src/contexts/app-context.tsx` single localStorage-backed store (`update(draft => …)`).

@@ -22,7 +22,7 @@ export function DriverNewView() {
     <div className="max-w-3xl">
       <PageHeader
         title="Register driver"
-        description="Add a driver to the directory and optionally assign a prime mover."
+        description="Add a driver to the directory. Trucks are assigned shift by shift on the roster."
         actions={
           <Button variant="outline" render={<Link href="/drivers" />}>
             <ArrowLeft /> Back

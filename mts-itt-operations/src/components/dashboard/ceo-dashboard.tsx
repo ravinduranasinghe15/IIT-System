@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
 import { StatCard } from "@/components/shared/stat-card";
+import { ShiftFilter, type ShiftValue } from "@/components/shared/shift-filter";
 import { useApp } from "@/contexts/app-context";
 import { CHART_COLORS } from "@/lib/constants";
 import { demoToday, formatDay } from "@/lib/date-utils";
@@ -36,12 +37,13 @@ export function CeoDashboard() {
   const router = useRouter();
   const today = demoToday();
   const [kind, setKind] = useState<IttPeriod>("monthly");
+  const [shift, setShift] = useState<ShiftValue>("");
   const { from, to } = useMemo(() => periodRange(kind, today), [kind, today]);
-  const d = useMemo(() => buildIttAnalysis(db, from, to, true), [db, from, to]);
+  const d = useMemo(() => buildIttAnalysis(db, from, to, true, "SAGT", shift), [db, from, to, shift]);
   const money = (n: number) => formatMoney(n, db.settings.currency);
 
   const inPeriod = d.totalTrips;
-  const doneInPeriod = useMemo(() => filterMovements(db, { ...defaultFilters(), from, to }).filter((i) => i.m.status === "Completed").length, [db, from, to]);
+  const doneInPeriod = useMemo(() => filterMovements(db, { ...defaultFilters(), from, to, shift }).filter((i) => i.m.status === "Completed").length, [db, from, to, shift]);
 
   const openEx = db.exceptions.filter((e) => e.status === "Open" || e.status === "Under Review");
   const critical = openEx.filter((e) => e.priority === "Critical" || e.priority === "High").length;
@@ -51,7 +53,7 @@ export function CeoDashboard() {
   const payPending = pendingPayRequests(db);
   const payPendingTotal = payPending.reduce((s, r) => s + r.total, 0);
   const fuelFlag = useMemo(() => fuelReconSummary(reconcileFuel(db)), [db]);
-  const onDutyToday = db.roster.filter((r) => r.date === today && ["Morning", "Afternoon", "Night"].includes(r.shift) && r.attendance !== "Absent").length;
+  const onDutyToday = db.roster.filter((r) => r.date === today && (shift ? r.shift === shift : ["Morning", "Night"].includes(r.shift)) && r.attendance !== "Absent").length;
   const activePM = db.primeMovers.filter((p) => p.status === "Active").length;
 
   const revenueByTerminal = SOURCE_TERMINALS.map((t) => ({ name: t, Revenue: Math.round(d.revenue?.bySource[t] ?? 0) }));
@@ -70,15 +72,18 @@ export function CeoDashboard() {
         }
       />
 
-      <div className="mb-4 flex w-fit overflow-hidden rounded-lg border text-sm">
-        {PERIODS.map((p) => (
-          <button key={p.key} type="button" aria-pressed={kind === p.key} onClick={() => setKind(p.key)} className={cn("px-4 py-2 font-medium", kind === p.key ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted")}>
-            {p.label}
-          </button>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex w-fit overflow-hidden rounded-lg border text-sm">
+          {PERIODS.map((p) => (
+            <button key={p.key} type="button" aria-pressed={kind === p.key} onClick={() => setKind(p.key)} className={cn("px-4 py-2 font-medium", kind === p.key ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted")}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <ShiftFilter value={shift} onChange={setShift} />
       </div>
 
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Business · {periodLabel}</h2>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Business · {periodLabel}{shift ? ` · ${shift} shift` : ""}</h2>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Revenue (billable)" value={money(d.revenue?.total ?? 0)} hint={`${money(d.revenue?.dailyAvg ?? 0)} / day`} icon={Banknote} tone="green" onClick={() => router.push("/reports")} />
         <StatCard label="Trips" value={formatNumber(inPeriod)} hint={`CWIT ${d.bySource.CWIT ?? 0} · SAGT ${d.bySource.SAGT ?? 0} · CICT ${d.bySource.CICT ?? 0}`} icon={Route} tone="navy" />
@@ -165,7 +170,7 @@ export function CeoDashboard() {
         <RecentExceptions />
         <ImportActivity />
       </div>
-      <p className="mt-4 text-xs text-slate">Revenue counts only Billable movements (verified chits, driver log verified, no open exceptions). The full set of reports, including the MTS ITT analysis, is under Reports.</p>
+      <p className="mt-4 text-xs text-slate">{shift ? `The shift filter applies to trips, revenue, trucks and drivers on duty; invoices, driver pay, exceptions and fuel-station/GPS figures are not split by shift. ` : ""}Revenue counts only Billable movements (verified chits, driver log verified, no open exceptions). The full set of reports, including the MTS ITT analysis, is under Reports.</p>
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { Field } from "@/components/shared/field";
 import { NativeSelect } from "@/components/shared/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useApp } from "@/contexts/app-context";
 import { useDriverActions } from "@/hooks/use-drivers";
 import type { Driver, DriverStatus } from "@/types/driver";
 import { DriverForm } from "./driver-form";
@@ -39,59 +38,6 @@ export function EditDriverDialog({ driver, open, onOpenChange }: { driver: Drive
           if (actions.edit(driver.id, input)) onOpenChange(false);
         }}
       />
-    </FormDialog>
-  );
-}
-
-export function AssignPrimeMoverDialog({ driver, open, onOpenChange }: { driver: Driver; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const { db } = useApp();
-  const actions = useDriverActions();
-  const [pmId, setPmId] = useState(driver.primeMoverId ?? "");
-  const holder = pmId ? db.primeMovers.find((p) => p.id === pmId)?.driverId : null;
-  const holderName = holder && holder !== driver.id ? db.drivers.find((x) => x.id === holder)?.name : null;
-
-  return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={`Assign prime mover – ${driver.name}`}
-      description="Updates both the driver record and the vehicle's current driver."
-      size="sm"
-      footer={
-        <>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            disabled={pmId === (driver.primeMoverId ?? "")}
-            onClick={() => {
-              actions.assignPrimeMover(driver.id, pmId || null);
-              onOpenChange(false);
-            }}
-          >
-            Save assignment
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-3">
-        <Field label="Prime mover">
-          <NativeSelect
-            value={pmId}
-            onValueChange={setPmId}
-            placeholder="Not assigned"
-            options={db.primeMovers.map((p) => {
-              const h = p.driverId ? db.drivers.find((x) => x.id === p.driverId) : null;
-              return { value: p.id, label: `${p.id} · ${p.regNo}${h && h.id !== driver.id ? ` (${h.name})` : ""}${p.status !== "Active" ? ` – ${p.status}` : ""}` };
-            })}
-          />
-        </Field>
-        {holderName && (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            {pmId} is currently assigned to {holderName}. Saving will unassign them from this vehicle.
-          </p>
-        )}
-      </div>
     </FormDialog>
   );
 }

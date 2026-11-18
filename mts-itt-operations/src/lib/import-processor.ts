@@ -7,6 +7,7 @@ import { movementDay } from "./eligibility";
 import { operationalDay, parseLooseDate } from "./date-utils";
 import type { MovementInput } from "./mutations/movement";
 import { validateJourney } from "./mutations/movement";
+import { rosterDriverFor } from "./driver-logs";
 
 /**
  * Pure import processing: standard-field extraction, normalisation, validation and duplicate detection.
@@ -228,11 +229,13 @@ export function processRows({ db, terminal, mapping, rows, display }: ProcessOpt
     // ---- driver ----
     const driverText = text("driver");
     let driverId: string | null = null;
-    if (!driverText) warnings.push("Driver missing");
-    else {
+    let driverSource: "roster" | "manual" | undefined;
+    if (driverText) {
       const d = resolveDriver(driverText, db);
-      if (d) driverId = d.id;
-      else warnings.push(`Driver '${driverText}' is not in the driver master data`);
+      if (d) {
+        driverId = d.id;
+        driverSource = "manual";
+      } else warnings.push(`Driver '${driverText}' is not in the driver master data`);
     }
     if (driverText) data.driver = driverId ? (db.drivers.find((d) => d.id === driverId)?.name ?? driverText) : driverText;
 
@@ -247,6 +250,15 @@ export function processRows({ db, terminal, mapping, rows, display }: ProcessOpt
     };
     const loadingAt = parseDate("loadingAt", "Loading time");
     const dischargeAt = parseDate("dischargeAt", "Discharge time");
+    // the terminal report names the truck, not the driver: take the driver the roster has on that truck for that shift
+    if (!driverText) {
+      const rd = rosterDriverFor(db, primeMoverId, loadingAt);
+      if (rd) {
+        driverId = rd;
+        driverSource = "roster";
+        data.driver = db.drivers.find((d) => d.id === rd)?.name ?? rd;
+      } else warnings.push("No driver on the roster for this truck and shift – the driver will be set from the driver log");
+    }
     if (loadingAt) data.loadingAt = loadingAt;
     if (dischargeAt) data.dischargeAt = dischargeAt;
     const dateBroken = errors.some((e) => e.startsWith("Invalid loading time") || e.startsWith("Invalid discharge time"));
@@ -308,6 +320,7 @@ export function processRows({ db, terminal, mapping, rows, display }: ProcessOpt
         primeMoverId,
         trailerId,
         driverId,
+        driverSource,
         loadingAt,
         dischargeAt,
         status,

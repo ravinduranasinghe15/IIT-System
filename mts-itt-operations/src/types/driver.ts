@@ -1,5 +1,5 @@
 export type DriverStatus = "Active" | "On Leave" | "Suspended" | "Inactive";
-export type ShiftType = "Morning" | "Afternoon" | "Night" | "Rotating";
+export type ShiftType = "Morning" | "Night" | "Rotating";
 
 export interface Driver {
   id: string;
@@ -7,7 +7,6 @@ export interface Driver {
   phone: string;
   licenseNo: string;
   licenseExpiry: string;
-  primeMoverId: string | null;
   status: DriverStatus;
   shift: ShiftType;
   joinedAt: string;
@@ -15,7 +14,7 @@ export interface Driver {
   emergencyContact: string;
 }
 
-export type RosterShift = "Morning" | "Afternoon" | "Night" | "Off" | "Leave";
+export type RosterShift = "Morning" | "Night" | "Off" | "Leave";
 export type AttendanceStatus = "Scheduled" | "Present" | "Absent" | "Late";
 
 export interface RosterEntry {
@@ -41,7 +40,7 @@ export interface RosterEntry {
 export interface OpenShift {
   id: string;
   date: string;
-  shift: "Morning" | "Afternoon" | "Night";
+  shift: "Morning" | "Night";
   primeMoverId: string | null;
   /** Driver who was rostered and is now away */
   driverId: string;

@@ -133,14 +133,15 @@ export interface FleetRow {
   movementsWindow: number;
 }
 
-export function fleetStatus(db: DB, today: string): FleetRow[] {
-  const todayList = movementsOnDay(db, today);
-  const win = inWindow(db, db.movements, today, 14);
+export function fleetStatus(db: DB, today: string, ms: Movement[] = db.movements): FleetRow[] {
+  const todayList = movementsOnDay(db, today, ms);
+  const win = inWindow(db, ms, today, 14);
   return db.primeMovers.map((p) => ({
     id: p.id,
     regNo: p.regNo,
     status: p.status,
-    driverId: p.driverId,
+    // the driver rostered on this truck today (drivers are not tied to a truck)
+    driverId: db.roster.find((r) => r.date === today && r.primeMoverId === p.id && r.attendance !== "Absent")?.driverId ?? null,
     movementsToday: todayList.filter((m) => m.primeMoverId === p.id).length,
     movementsWindow: win.filter((m) => m.primeMoverId === p.id).length,
   }));

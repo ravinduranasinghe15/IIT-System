@@ -4,6 +4,9 @@ import { actorOf, logAudit, notify, nowOf } from "@/lib/db-helpers";
 import { addDays, eachDay, formatDate, realToday } from "@/lib/date-utils";
 import { SHIFT_HOURS, availableDrivers, breaksWeeklyOff, getterFor, isWorkShift, restConflict, type WorkShift } from "@/lib/roster-rules";
 import { nextSeqId } from "@/lib/fleet-utils";
+import { refreshMovementDrivers } from "@/lib/movement-driver";
+import { generateRoster, planDates, type RosterPlan } from "@/lib/roster-generator";
+import { can } from "@/lib/permissions";
 
 /** Driver, roster, attendance and leave mutators. All take a draft DB (use inside `update`). */
 
@@ -17,8 +20,6 @@ export interface DriverInput {
   joinedAt: string;
   address: string;
   emergencyContact: string;
-  /** "" or null = no prime mover */
-  primeMoverId: string | null;
 }
 
 function findDriver(d: DB, id: string): Driver {
@@ -27,45 +28,11 @@ function findDriver(d: DB, id: string): Driver {
   return drv;
 }
 
-/** Keeps Driver.primeMoverId and PrimeMover.driverId in sync (one driver <-> one prime mover as the primary assignment). */
-export function assignPrimeMover(d: DB, driverId: string, primeMoverId: string | null, log = true): void {
-  const drv = findDriver(d, driverId);
-  const previous = drv.primeMoverId;
-  if (previous === primeMoverId) return;
-  if (previous) {
-    const old = d.primeMovers.find((p) => p.id === previous);
-    if (old && old.driverId === driverId) old.driverId = null;
-  }
-  let displaced: string | null = null;
-  if (primeMoverId) {
-    const pm = d.primeMovers.find((p) => p.id === primeMoverId);
-    if (!pm) throw new Error(`Prime mover ${primeMoverId} not found`);
-    if (pm.driverId && pm.driverId !== driverId) {
-      displaced = pm.driverId;
-      const other = d.drivers.find((x) => x.id === pm.driverId);
-      if (other) other.primeMoverId = null;
-    }
-    pm.driverId = driverId;
-  }
-  drv.primeMoverId = primeMoverId;
-  if (log) {
-    logAudit(d, {
-      action: primeMoverId ? "Prime Mover Assigned" : "Prime Mover Unassigned",
-      module: "Drivers",
-      entityId: driverId,
-      description: primeMoverId
-        ? `${drv.name} (${driverId}) assigned to ${primeMoverId}${previous ? ` (was ${previous})` : ""}${displaced ? `; ${displaced} was unassigned from ${primeMoverId}` : ""}.`
-        : `${drv.name} (${driverId}) unassigned from ${previous}.`,
-    });
-  }
-}
-
 export function registerDriver(d: DB, input: DriverInput): Driver {
   const id = nextSeqId(d.drivers.map((x) => x.id), "DR-", 3);
-  const drv: Driver = { id, ...input, name: input.name.trim(), primeMoverId: null };
+  const drv: Driver = { id, ...input, name: input.name.trim() };
   d.drivers.push(drv);
   logAudit(d, { action: "Driver Registered", module: "Drivers", entityId: id, description: `Registered driver ${drv.name} (${id}), licence ${drv.licenseNo}, shift ${drv.shift}.` });
-  if (input.primeMoverId) assignPrimeMover(d, id, input.primeMoverId);
   notify(d, { title: "New driver registered", body: `${drv.name} (${id}) was added to the driver directory.`, level: "info", href: `/drivers/${id}` });
   return drv;
 }
@@ -80,11 +47,6 @@ export function updateDriver(d: DB, id: string, input: DriverInput): Driver {
       (drv as unknown as Record<string, string>)[k] = next;
     }
   });
-  const pmNext = input.primeMoverId || null;
-  if (pmNext !== drv.primeMoverId) {
-    assignPrimeMover(d, id, pmNext);
-    changes.push(`prime mover → ${pmNext ?? "none"}`);
-  }
   logAudit(d, {
     action: "Driver Updated",
     module: "Drivers",
@@ -117,15 +79,12 @@ export interface RosterPatch {
 
 const isWorking = (s: RosterShift) => isWorkShift(s);
 
-/** A truck that is free on `date` for `shift` (not on another driver's shift), avoiding the driver's truck from the day before. */
+/** A truck that is free on `date` for `shift` (not on another driver's shift); the driver's truck from the day before is preferred for continuity. */
 function freeTruck(d: DB, date: string, shift: WorkShift, driverId: string): string | null {
-  // a driver with an assigned truck always drives that truck
-  const own = d.drivers.find((x) => x.id === driverId)?.primeMoverId;
-  if (own) return own;
   const taken = new Set(d.roster.filter((r) => r.date === date && r.shift === shift && r.driverId !== driverId && r.primeMoverId).map((r) => r.primeMoverId as string));
   const yesterday = d.roster.find((r) => r.driverId === driverId && r.date === addDays(date, -1))?.primeMoverId ?? null;
   const free = d.primeMovers.filter((p) => p.status === "Active" && !taken.has(p.id));
-  return (free.find((p) => p.id !== yesterday) ?? free[0])?.id ?? null;
+  return (free.find((p) => p.id === yesterday) ?? free[0])?.id ?? null;
 }
 
 /** Finds the roster cell for (driver, date) or generates it (as "Off") so missing cells can be edited. */
@@ -169,8 +128,8 @@ export function updateRosterCell(d: DB, driverId: string, date: string, patch: R
     }
   }
   if (patch.primeMoverId !== undefined && isWorking(entry.shift)) {
-    if (drv.primeMoverId && patch.primeMoverId && patch.primeMoverId !== drv.primeMoverId && !entry.coveringFor)
-      throw new Error(`${drv.name} drives only his assigned truck (${drv.primeMoverId}).`);
+    const clash = patch.primeMoverId ? d.roster.find((r) => r.id !== entry.id && r.date === entry.date && r.shift === entry.shift && r.primeMoverId === patch.primeMoverId && r.attendance !== "Absent") : null;
+    if (clash) throw new Error(`${patch.primeMoverId} is already rostered for the ${entry.shift} shift on ${formatDate(entry.date)}.`);
     entry.primeMoverId = patch.primeMoverId || null;
   }
   if (patch.attendance !== undefined && isWorking(entry.shift)) {
@@ -192,12 +151,13 @@ export function updateRosterCell(d: DB, driverId: string, date: string, patch: R
     entityId: entry.id,
     description: `${drv.name} (${driverId}) on ${formatDate(date)}: ${before} → ${after}.`,
   });
+  refreshMovementDrivers(d);
   return entry;
 }
 
 export function recordAttendance(d: DB, driverId: string, date: string, status: AttendanceStatus): RosterEntry {
   const entry = d.roster.find((r) => r.driverId === driverId && r.date === date);
-  if (!entry || !isWorking(entry.shift)) throw new Error("Attendance can only be recorded for a Morning, Afternoon or Night shift.");
+  if (!entry || !isWorking(entry.shift)) throw new Error("Attendance can only be recorded for a Morning or Night shift.");
   return updateRosterCell(d, driverId, date, { attendance: status });
 }
 
@@ -215,7 +175,7 @@ export interface AbsenceInput {
 export function reportAbsence(d: DB, input: AbsenceInput): RosterEntry {
   const drv = findDriver(d, input.driverId);
   const entry = d.roster.find((r) => r.driverId === input.driverId && r.date === input.date);
-  if (!entry || !isWorking(entry.shift)) throw new Error(`${drv.name} has no Morning, Afternoon or Night shift on ${formatDate(input.date)}.`);
+  if (!entry || !isWorking(entry.shift)) throw new Error(`${drv.name} has no Morning or Night shift on ${formatDate(input.date)}.`);
   if (entry.absentReason) throw new Error(`${drv.name}'s absence on ${formatDate(input.date)} was already reported.`);
   if (!input.reason.trim()) throw new Error("Select the reason the driver gave.");
   const actor = actorOf(d);
@@ -252,6 +212,48 @@ export function reportAbsence(d: DB, input: AbsenceInput): RosterEntry {
     href: "/drivers/roster",
   });
   return entry;
+}
+
+export interface PublishResult {
+  added: number;
+  removed: number;
+  planned: number;
+  covered: number;
+  warnings: string[];
+}
+
+/** The Manager publishes a generated roster for a period. Past days, leave, absences and recorded attendance are never touched. */
+export function publishRoster(d: DB, plan: RosterPlan): PublishResult {
+  const actor = actorOf(d);
+  if (!can(actor.role, "roster.edit")) throw new Error("Only the Manager can generate a roster.");
+  if (plan.days < 1 || plan.days > 31) throw new Error("A roster period must be between 1 and 31 days.");
+  const gen = generateRoster(d, plan);
+  const gone = new Set(gen.removeIds);
+  d.roster = d.roster.filter((r) => !gone.has(r.id));
+  const ids = d.roster.map((r) => r.id);
+  for (const e of gen.entries) {
+    const id = nextSeqId(ids, "RS-", 4);
+    ids.push(id);
+    d.roster.push({ id, ...e });
+  }
+  const dates = planDates(plan);
+  const from = formatDate(dates[0]);
+  const to = formatDate(dates[dates.length - 1]);
+  const mode = plan.mode === "week" ? `${plan.perShift.Morning} Morning / ${plan.perShift.Night} Night trucks every day` : "date-wise truck counts";
+  logAudit(d, {
+    action: "Roster Generated",
+    module: "Roster",
+    entityId: `${dates[0]}..${dates[dates.length - 1]}`,
+    description: `${actor.name} generated the roster for ${from} – ${to} (${mode}; ${plan.apply === "replace" ? "replaced future days" : "filled gaps only"}${plan.excludedTrucks.length ? `; trucks left out: ${plan.excludedTrucks.join(", ")}` : ""}). ${gen.totalCovered} of ${gen.totalPlanned} truck-shifts covered; ${gen.entries.filter((e) => e.shift !== "Off").length} shifts added.`,
+  });
+  notify(d, {
+    title: "New roster published",
+    body: `The roster for ${from} – ${to} was generated by ${actor.name}: ${gen.totalCovered} of ${gen.totalPlanned} truck-shifts covered. Drivers can check their shifts under My roster.`,
+    level: gen.totalCovered < gen.totalPlanned ? "warning" : "success",
+    href: "/drivers/roster",
+  });
+  refreshMovementDrivers(d);
+  return { added: gen.entries.filter((e) => e.shift !== "Off").length, removed: gen.removeIds.length, planned: gen.totalPlanned, covered: gen.totalCovered, warnings: gen.warnings };
 }
 
 /** Prime movers rostered for more than one driver on the same date and shift. */
@@ -387,6 +389,7 @@ export function replaceDriver(d: DB, input: ReplaceInput): RosterEntry {
     entityId: entry.id,
     description: `${to.name} (${to.id}) assigned to the ${input.shift} shift (${range}) on ${formatDate(input.date)}${truck ? ` on ${truck}` : ""}${fromName ? ` replacing ${fromName}` : ""}.`,
   });
+  refreshMovementDrivers(d);
   notify(d, {
     title: "Shift reassigned",
     body: `${to.name} now covers ${input.shift} (${range}) on ${formatDate(input.date)}${fromName ? ` for ${fromName}` : ""}.`,
