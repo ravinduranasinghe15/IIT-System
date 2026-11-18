@@ -40,7 +40,7 @@ export function ImportDetailView() {
   const original = isDupFile ? db.imports.find((i) => i.id !== imp.id && i.fingerprint === imp.fingerprint && i.status !== "Rejected – Duplicate File") : undefined;
   const dupes = db.imports.filter((i) => i.id !== imp.id && i.fingerprint === imp.fingerprint && i.status === "Rejected – Duplicate File");
   const exceptions: ExceptionRecord[] = db.exceptions.filter((e) => e.importId === imp.id);
-  const movements = db.movements.filter((m) => m.importId === imp.id);
+  const movements = db.movements.filter((m) => m.importId === imp.id).sort((a, b) => (a.id < b.id ? -1 : 1));
   const warnRows = imp.rows.filter((r) => r.status === "Imported" && r.warnings.length).length;
 
   const exColumns: Column<ExceptionRecord>[] = [

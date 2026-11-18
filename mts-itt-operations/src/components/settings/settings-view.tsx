@@ -113,7 +113,7 @@ export function SettingsView() {
   if (!can("settings.manage")) {
     return (
       <div className="mx-auto max-w-md rounded-xl border bg-card py-6 shadow-sm">
-        <EmptyState icon={Lock} title="Administrator only" description="Settings, user management and audit logs are limited to the Administrator demo role." />
+        <EmptyState icon={Lock} title="Manager only" description="Settings, user management and audit logs are limited to the Manager demo role." />
       </div>
     );
   }
@@ -214,7 +214,7 @@ export function SettingsView() {
 
         <SectionCard title="Controls and thresholds" description="Approvals, staffing note, fuel and extraction thresholds">
           <div className="space-y-4">
-            {toggle("requireManagerApproval", "Require manager approval for material corrections", "Financially material movement corrections wait for an Operations Manager or Administrator")}
+            {toggle("requireManagerApproval", "Require manager approval for material corrections", "Financially material movement corrections wait for the Manager")}
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Drivers per truck (optional)" error={errors.driversPerTruck?.message} hint="Unconfirmed – leave blank for no rule.">
                 <Input inputMode="numeric" placeholder="Not set" {...register("driversPerTruck")} aria-invalid={!!errors.driversPerTruck} />
@@ -222,7 +222,7 @@ export function SettingsView() {
               <Field label="Fuel variance threshold (%)" required error={errors.fuelVarianceThresholdPct?.message} hint="GPS vs invoice litres above this are flagged.">
                 <Input type="number" step="0.5" {...register("fuelVarianceThresholdPct", { valueAsNumber: true })} aria-invalid={!!errors.fuelVarianceThresholdPct} />
               </Field>
-              <Field label="OCR confidence threshold (%)" required error={errors.ocrConfidenceThreshold?.message} hint="Below this, extracted fields are flagged.">
+              <Field label="OCR confidence threshold (%)" required error={errors.ocrConfidenceThreshold?.message} hint="Chits scoring at or above this (lowest field) are verified automatically; the rest go to manual verification.">
                 <Input type="number" step="1" {...register("ocrConfidenceThreshold", { valueAsNumber: true })} aria-invalid={!!errors.ocrConfidenceThreshold} />
               </Field>
             </div>

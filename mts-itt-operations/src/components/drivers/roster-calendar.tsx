@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { Moon, Sun, Sunset, UserCheck } from "lucide-react";
+import { UserCheck } from "lucide-react";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field } from "@/components/shared/field";
 import { NativeSelect } from "@/components/shared/native-select";
@@ -76,29 +76,24 @@ export function RosterCalendar({
               </th>
             ))}
           </tr>
-          {showCoverage &&
-            WORK_SHIFTS.map((k) => (
-              <tr key={k}>
-                <th className="sticky left-0 z-20 border-b bg-card px-3 py-1.5 text-left text-xs font-medium text-ink">
-                  <span className="inline-flex items-center gap-1.5">
-                    {k === "Morning" ? <Sun className="size-3.5 text-amber-500" /> : k === "Afternoon" ? <Sunset className="size-3.5 text-orange-500" /> : <Moon className="size-3.5 text-navy" />}
-                    {k} cover
-                    <span className="font-normal text-slate">{SHIFT_HOURS[k].short}</span>
-                  </span>
-                </th>
-                {coverage.map((c) => {
-                  const v = c[k];
-                  return (
-                    <td key={c.date} className={cn("border-b px-1 py-1 text-center", v.drivers === 0 && "bg-red-50", c.date === today && v.drivers > 0 && "bg-brand/5")}>
-                      <div className={cn("text-sm font-semibold tabular-nums", v.drivers === 0 ? "text-danger" : "text-ink")}>{v.drivers}</div>
-                      <div className="text-[10px] text-slate">
-                        {v.movers} PM{v.absent ? ` · ${v.absent} abs` : ""}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+          {showCoverage && (
+            <tr>
+              <th className="sticky left-0 z-20 border-b bg-card px-3 py-1.5 text-left text-xs font-medium text-ink">Drivers on duty</th>
+              {coverage.map((c) => {
+                const total = c.Morning.drivers + c.Afternoon.drivers + c.Night.drivers;
+                const gap = WORK_SHIFTS.some((k) => c[k].drivers === 0);
+                return (
+                  <td
+                    key={c.date}
+                    title={`Morning ${c.Morning.drivers} · Afternoon ${c.Afternoon.drivers} · Night ${c.Night.drivers}${gap ? " – a shift has no driver" : ""}`}
+                    className={cn("border-b px-1 py-1 text-center", gap && "bg-red-50", c.date === today && !gap && "bg-brand/5")}
+                  >
+                    <div className={cn("text-sm font-semibold tabular-nums", gap ? "text-danger" : "text-ink")}>{total}</div>
+                  </td>
+                );
+              })}
+            </tr>
+          )}
         </thead>
         <tbody>
           {drivers.map((drv) => (
@@ -121,14 +116,13 @@ export function RosterCalendar({
                       onClick={() => onCellClick?.(drv, date, e)}
                       title={clash ? `Prime mover ${e?.primeMoverId} is also rostered for ${clash.join(", ")} on this shift` : e ? `${SHIFT_LABEL[e.shift]}${isWorkShift(e.shift) ? ` (${SHIFT_HOURS[e.shift].range})` : ""}${e.primeMoverId ? ` · ${e.primeMoverId}` : ""} · ${e.attendance}` : "Not rostered"}
                       className={cn(
-                        "relative flex h-14 w-full flex-col items-center justify-center rounded-md ring-1 ring-inset transition",
+                        "relative flex h-12 w-full flex-col items-center justify-center rounded-md ring-1 ring-inset transition",
                         e ? SHIFT_STYLE[e.shift] : "bg-transparent text-slate-300 ring-dashed ring-slate-200",
                         clickable && "hover:ring-2 hover:ring-brand",
                         clash && "ring-2 ring-red-500",
                       )}
                     >
                       <span className="text-[11px] font-semibold leading-none">{e ? SHIFT_LABEL[e.shift] : "—"}</span>
-                      {e && isWorkShift(e.shift) && <span className="mt-0.5 text-[10px] leading-none opacity-90">{SHIFT_HOURS[e.shift].short}</span>}
                       {e && isWorkingShift(e.shift) && (
                         <span className="mt-0.5 text-[10px] leading-none opacity-80">{e.coveredBy ? `→ ${e.coveredBy}` : e.coveringFor ? `for ${e.coveringFor}` : (e.primeMoverId ?? "no PM")}</span>
                       )}
@@ -209,7 +203,7 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
         </Field>
         {working && (
           <>
-            <Field label="Prime mover" hint="Defaults to the driver's assigned prime mover.">
+            <Field label="Prime mover" hint={driver.primeMoverId ? `${driver.name} drives only his assigned truck (${driver.primeMoverId}).` : "Relief driver: covers the truck of the driver he replaces."}>
               <Controller
                 control={control}
                 name="primeMoverId"
@@ -219,7 +213,7 @@ export function RosterCellDialog({ driver, date, entry, onClose }: { driver: Dri
                     value={field.value}
                     onValueChange={field.onChange}
                     placeholder="No prime mover"
-                    options={db.primeMovers.map((p) => ({ value: p.id, label: `${p.id} · ${p.regNo}${p.status !== "Active" ? ` – ${p.status}` : ""}` }))}
+                    options={db.primeMovers.filter((p) => !driver.primeMoverId || entry?.coveringFor || p.id === driver.primeMoverId).map((p) => ({ value: p.id, label: `${p.id} · ${p.regNo}${p.status !== "Active" ? ` – ${p.status}` : ""}` }))}
                   />
                 )}
               />

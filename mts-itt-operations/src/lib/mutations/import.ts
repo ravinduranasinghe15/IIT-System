@@ -4,6 +4,8 @@ import type { TerminalCode } from "@/types/terminal";
 import { actorOf, logAudit, nextId, notify, nowOf } from "../db-helpers";
 import type { ProcessedRow } from "../import-processor";
 import { createMovement } from "./movement";
+import { linkDocument } from "./evidence";
+import { demoChitByName } from "@/data/demo-chits";
 
 export interface CommitImportInput {
   fileName: string;
@@ -28,6 +30,21 @@ export function findImportByFingerprint(db: DB, fingerprint: string): ImportReco
 }
 
 const CICT_NOTE = "CICT pilot import – source format is still pending sample validation; results are provisional.";
+
+/** Link chits submitted earlier (while their movement did not exist yet) to newly created movements, matched by container number. */
+function autoLinkPendingChits(db: DB, movementIds: string[]): number {
+  if (!movementIds.length) return 0;
+  const fresh = db.movements.filter((m) => movementIds.includes(m.id));
+  let linked = 0;
+  for (const doc of db.documents) {
+    if (doc.movementId || (doc.docType !== "Loading Chit" && doc.docType !== "Discharge Chit")) continue;
+    const container = (demoChitByName(doc.name)?.linkContainer ?? doc.ocr?.fields.find((f) => f.key === "containerNo")?.value ?? "").trim().toUpperCase();
+    if (!container) continue;
+    const m = fresh.find((x) => x.containerNos.some((c) => c.toUpperCase() === container));
+    if (m && linkDocument(db, doc.id, m.id).ok) linked++;
+  }
+  return linked;
+}
 
 /**
  * Commit an import: create movements for valid rows (origin "Import"), keep every row (incl. invalid / duplicate) in the
@@ -113,6 +130,7 @@ export function commitImport(db: DB, input: CommitImportInput): CommitImportResu
     results.push(res);
   }
   const success = created.length;
+  const autoLinked = autoLinkPendingChits(db, created);
   const exceptionsRaised = db.exceptions.filter((e) => e.importId === id).length;
   const record: ImportRecord = {
     id,
@@ -129,7 +147,7 @@ export function commitImport(db: DB, input: CommitImportInput): CommitImportResu
     exceptionsRaised,
     mapping: { ...input.mapping },
     rows: results,
-    note: noteParts.length ? noteParts.join(" ") : undefined,
+    note: [...noteParts, ...(autoLinked ? [`${autoLinked} previously unlinked chit(s) were linked to the new movements by container number.`] : [])].join(" ") || undefined,
   };
   db.imports.unshift(record);
   db.settings.importMappings = { ...db.settings.importMappings, [input.terminal]: { ...input.mapping } };

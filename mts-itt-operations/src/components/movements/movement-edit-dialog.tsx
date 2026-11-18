@@ -14,7 +14,7 @@ export function MovementEditDialog({ movement, onOpenChange }: { movement: Movem
   const { edit } = useMovements();
   const { db } = useApp();
   const { role } = useAuth();
-  const isManager = role === "Administrator" || role === "Operations Manager";
+  const isManager = role === "Manager";
 
   return (
     <FormDialog

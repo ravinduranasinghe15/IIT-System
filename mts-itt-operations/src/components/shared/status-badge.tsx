@@ -25,6 +25,8 @@ const MAP: Record<string, Tone> = {
   "Blocked – Exception": "red",
   "Pending Approval": "orange",
   "Pending Completion": "grey",
+  "Pending Chits": "orange",
+  "Pending Driver Log": "orange",
   "Non-billable": "grey",
   // exceptions
   Open: "red",

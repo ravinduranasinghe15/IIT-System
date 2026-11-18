@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useLookups } from "@/hooks/use-lookups";
 import { formatDateTime } from "@/lib/date-utils";
 import type { Movement } from "@/types/movement";
+import { ScrollX } from "@/components/shared/scroll-x";
 
 export function RecentMovements({ movements, showDriver = true }: { movements: Movement[]; showDriver?: boolean }) {
   const lk = useLookups();
@@ -28,7 +29,7 @@ export function RecentMovements({ movements, showDriver = true }: { movements: M
       {movements.length === 0 ? (
         <EmptyState title="No movements yet" description="Registered and imported movements will appear here." />
       ) : (
-        <div className="scroll-thin overflow-x-auto">
+        <ScrollX>
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/60 hover:bg-muted/60">
@@ -66,7 +67,7 @@ export function RecentMovements({ movements, showDriver = true }: { movements: M
               ))}
             </TableBody>
           </Table>
-        </div>
+        </ScrollX>
       )}
     </SectionCard>
   );

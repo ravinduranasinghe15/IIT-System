@@ -67,7 +67,7 @@ export function SidebarContent({
             >
               <Icon className={cn("size-[18px] shrink-0", active && "text-success")} />
               {!collapsed && <span className="truncate">{n.label}</span>}
-              {n.key === "payments" && pendingPay > 0 && (role === "Administrator" || role === "Finance Manager") && (
+              {n.key === "payments" && pendingPay > 0 && role === "Manager" && (
                 <span
                   className={cn("flex size-5 shrink-0 items-center justify-center rounded-full bg-warning text-[11px] font-semibold text-white", collapsed ? "absolute -right-0.5 -top-0.5 size-4 text-[10px]" : "ml-auto")}
                   title={`${pendingPay} payment request(s) waiting for approval`}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, CheckCircle2, Download, FileSpreadsheet, FileX2, Loader2, Lock, PlayCircle, RefreshCw, X } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Download, FileSpreadsheet, FileX2, Loader2, Lock, PlayCircle, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,30 +15,23 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useImportActions } from "@/hooks/use-imports";
-import { DEMO_FILE_HREF, DEMO_FILE_NAME, DEMO_ROWS } from "@/data/demo-import";
 import { DEFAULT_MAPPINGS } from "@/data/mock-imports";
 import { processRows } from "@/lib/import-processor";
-import type { CommitImportResult } from "@/lib/mutations/import";
+import { normaliseReport, readSheetData, type NormalisedReport, type SheetData } from "@/lib/report-formats";
+import { findImportByFingerprint, type CommitImportResult } from "@/lib/mutations/import";
 import { cn } from "@/lib/utils";
 import { TerminalTag } from "./import-common";
 
-/** Fixed fingerprint: the demo always imports the same report, so a second run demonstrates duplicate-file rejection. */
-const DEMO_FINGERPRINT = "demo-terminal-report-v1";
+const SAMPLES = [
+  { terminal: "CWIT", name: "CWIT-ITT-Out-Report-sample.xlsx", href: "/documents/CWIT-ITT-Out-Report-sample.xlsx", label: "CWIT report" },
+  { terminal: "SAGT", name: "SAGT-Container-Report-sample.xlsx", href: "/documents/SAGT-Container-Report-sample.xlsx", label: "SAGT report" },
+] as const;
 
-const STAGES = [
-  "Reading terminal report",
-  "Matching drivers, trucks and trailers to master data",
-  "Creating movements in the ledger",
-  "Reconciling and raising exceptions",
-];
-const STAGE_MS = 650;
+const STAGES = ["Reading the report", "Converting it to the common format", "Checking containers, trucks and drivers", "Creating movements and raising exceptions"];
+const STAGE_MS = 600;
+const PREVIEW_ROWS = 5;
 
 type Phase = "upload" | "processing" | "results";
-
-interface PickedFile {
-  name: string;
-  sizeKb: number;
-}
 
 export function ImportWizard() {
   const { db } = useApp();
@@ -46,7 +39,10 @@ export function ImportWizard() {
   const { commit } = useImportActions();
 
   const [phase, setPhase] = useState<Phase>("upload");
-  const [picked, setPicked] = useState<PickedFile | null>(null);
+  const [sheet, setSheet] = useState<SheetData | null>(null);
+  const [report, setReport] = useState<NormalisedReport | null>(null);
+  const [reading, setReading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState(0);
   const [result, setResult] = useState<CommitImportResult | null>(null);
   const timers = useRef<number[]>([]);
@@ -64,7 +60,7 @@ export function ImportWizard() {
           <EmptyState
             icon={Lock}
             title="You do not have permission to run imports"
-            description="Importing terminal reports requires the Administrator, Operations Manager or Operations Staff role. Use the role switcher in the header."
+            description="Importing terminal reports requires the Manager role. Use the role switcher in the header."
             action={<Button variant="outline" render={<Link href="/terminal-imports" />}>Back to import history</Button>}
           />
         </div>
@@ -72,23 +68,55 @@ export function ImportWizard() {
     );
   }
 
+  const load = async (file: File) => {
+    setError(null);
+    setReport(null);
+    setSheet(null);
+    setReading(true);
+    try {
+      const s = await readSheetData(file);
+      const r = normaliseReport(db, s);
+      setSheet(s);
+      setReport(r);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not read the file.");
+    } finally {
+      setReading(false);
+    }
+  };
+
+  const loadSample = async (s: (typeof SAMPLES)[number]) => {
+    try {
+      const blob = await (await fetch(s.href)).blob();
+      await load(new File([blob], s.name, { type: blob.type }));
+    } catch {
+      setError("Could not load the sample report.");
+    }
+  };
+
+  const clear = () => {
+    setSheet(null);
+    setReport(null);
+    setError(null);
+  };
+
+  const duplicateOf = sheet ? findImportByFingerprint(db, sheet.fingerprint) : undefined;
+
   const runImport = () => {
-    if (!picked) return;
+    if (!sheet || !report) return;
     setPhase("processing");
     setStage(0);
     STAGES.forEach((_, i) => {
-      if (i === 0) return;
-      timers.current.push(window.setTimeout(() => setStage(i), i * STAGE_MS));
+      if (i > 0) timers.current.push(window.setTimeout(() => setStage(i), i * STAGE_MS));
     });
     timers.current.push(
       window.setTimeout(() => {
-        const terminal = "CWIT" as const;
-        const mapping = { ...DEFAULT_MAPPINGS[terminal] };
-        const rows = processRows({ db, terminal, mapping, rows: DEMO_ROWS, display: DEMO_ROWS });
-        const res = commit({ fileName: picked.name, fingerprint: DEMO_FINGERPRINT, terminal, mapping, rows, includeDuplicateRows: [] });
+        const mapping = { ...DEFAULT_MAPPINGS.CWIT };
+        const rows = processRows({ db, terminal: report.terminal, mapping, rows: report.rows, display: report.display });
+        const res = commit({ fileName: sheet.fileName, fingerprint: sheet.fingerprint, terminal: report.terminal, mapping, rows, includeDuplicateRows: [] });
         setResult(res);
         setPhase("results");
-        if (res.rejectedDuplicateFile) toast.warning("Duplicate file rejected", { description: "This report was already imported. Nothing was counted twice." });
+        if (res.rejectedDuplicateFile) toast.warning("Duplicate file rejected", { description: "This exact file was already imported. Nothing was counted twice." });
         else toast.success(`Import ${res.record.id} completed`, { description: `${res.record.success} movement(s) created, ${res.record.exceptionsRaised} exception(s) raised.` });
       }, STAGES.length * STAGE_MS),
     );
@@ -97,12 +125,12 @@ export function ImportWizard() {
   const reset = () => {
     timers.current.forEach((t) => window.clearTimeout(t));
     timers.current = [];
-    setPicked(null);
+    clear();
     setResult(null);
     setPhase("upload");
   };
 
-  const created = result ? db.movements.filter((m) => result.createdMovementIds.includes(m.id)) : [];
+  const created = result ? db.movements.filter((m) => result.createdMovementIds.includes(m.id)).sort((a, b) => (a.id < b.id ? -1 : 1)) : [];
   const excByMovement = new Map<string, number>();
   for (const e of db.exceptions) if (result && e.importId === result.record.id) excByMovement.set(e.movementId, (excByMovement.get(e.movementId) ?? 0) + 1);
 
@@ -110,80 +138,171 @@ export function ImportWizard() {
     <>
       <PageHeader
         title="New terminal import"
-        description="Upload the terminal report. The system reads it, creates the movements and raises exceptions automatically."
+        description="Upload a terminal report in its own layout. The system recognises the terminal's format and converts it to one common format before importing."
         actions={
           <Button variant="outline" render={<Link href="/terminal-imports" />}>
-            <ArrowLeft /> Import history
+            Import history
           </Button>
         }
       />
 
       {phase === "upload" && (
-        <SectionCard
-          title="Upload terminal report"
-          description="Use the prepared demo report for the walkthrough."
-          actions={
-            <Button variant="outline" size="sm" render={<a href={DEMO_FILE_HREF} download />}>
-              <Download /> Download demo report
-            </Button>
-          }
-        >
-          {!picked ? (
-            <div className="space-y-3">
-              <FileDropzone
-                accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                onFiles={(f) => setPicked({ name: f[0].name, sizeKb: Math.max(1, Math.round(f[0].size / 1024)) })}
-                title="Drag & drop the terminal report here"
-                hint="XLSX · XLS · CSV"
-              />
-              <div className="text-center text-xs text-slate">
-                or{" "}
-                <button type="button" className="font-medium text-brand underline" onClick={() => setPicked({ name: DEMO_FILE_NAME, sizeKb: 9 })}>
-                  use the demo report ({DEMO_FILE_NAME})
-                </button>
+        <div className="space-y-4">
+          <SectionCard
+            title="Upload terminal report"
+            description="CWIT and SAGT send different layouts. Either one can be uploaded here."
+            actions={
+              <div className="flex flex-wrap gap-1">
+                {SAMPLES.map((s) => (
+                  <Button key={s.href} variant="outline" size="sm" render={<a href={s.href} download />} nativeButton={false}>
+                    <Download /> {s.label}
+                  </Button>
+                ))}
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
+            }
+          >
+            {!sheet && !reading && (
+              <div className="space-y-3">
+                <FileDropzone
+                  accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                  onFiles={(f) => load(f[0])}
+                  title="Drag & drop the terminal report here"
+                  hint="XLSX · XLS · CSV"
+                />
+                <div className="text-center text-xs text-slate">
+                  or use a sample:{" "}
+                  {SAMPLES.map((s, i) => (
+                    <span key={s.name}>
+                      {i > 0 && " · "}
+                      <button type="button" className="font-medium text-brand underline" onClick={() => loadSample(s)}>
+                        {s.terminal} sample report
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {reading && (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate" role="status">
+                <Loader2 className="size-4 animate-spin" /> Reading the report…
+              </div>
+            )}
+            {error && (
+              <Alert variant="destructive" className="mt-3">
+                <FileX2 />
+                <AlertTitle>Could not use this file</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {sheet && report && !reading && (
               <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3">
                 <div className="flex size-10 items-center justify-center rounded-lg bg-success/10 text-success">
                   <FileSpreadsheet className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-ink">{picked.name}</div>
-                  <div className="text-xs text-slate">{picked.sizeKb} KB · ready to import</div>
+                  <div className="truncate text-sm font-semibold text-ink">{sheet.fileName}</div>
+                  <div className="text-xs text-slate">
+                    {sheet.fileSizeKb} KB · sheet “{sheet.sheetName}” · {report.sourceRows} container line(s) found
+                  </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setPicked(null)}>
+                <Button variant="outline" size="sm" onClick={clear}>
                   <RefreshCw /> Replace file
                 </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => setPicked(null)} aria-label="Remove file">
+                <Button variant="ghost" size="icon-sm" onClick={clear} aria-label="Remove file">
                   <X />
                 </Button>
               </div>
-              <div className="flex justify-end">
-                <Button onClick={runImport}>
-                  <PlayCircle /> Import report
+            )}
+            {duplicateOf && (
+              <Alert variant="destructive" className="mt-3">
+                <FileX2 />
+                <AlertTitle>Duplicate file detected</AlertTitle>
+                <AlertDescription>
+                  This exact file was already imported as{" "}
+                  <Link href={`/terminal-imports/${duplicateOf.id}`} className="font-semibold underline">{duplicateOf.id}</Link>. Importing again records a “Rejected – Duplicate File” entry and creates no movements.
+                </AlertDescription>
+              </Alert>
+            )}
+          </SectionCard>
+
+          {report && (
+            <SectionCard
+              title="Layout recognised"
+              description="The file is converted to the common format the system works with."
+              actions={<span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-inset ring-sky-600/20">{report.formatLabel}</span>}
+            >
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate">Terminal column → common column</div>
+                  <ul className="divide-y rounded-lg border text-sm">
+                    {report.links.map((l) => (
+                      <li key={l.common} className="flex items-center gap-2 px-3 py-1.5">
+                        <span className="w-40 shrink-0 truncate text-slate" title={l.source}>{l.source}</span>
+                        <ArrowRight className="size-3.5 shrink-0 text-brand" />
+                        <span className="font-medium text-ink">{l.common}</span>
+                        {l.how && <span className="ml-auto hidden truncate text-xs text-slate xl:block" title={l.how}>{l.how}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate">What the system did</div>
+                  <ul className="list-disc space-y-1 pl-5 text-xs text-slate">
+                    {report.notes.map((n) => (
+                      <li key={n}>{n}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-4">
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate">
+                  Common format · {report.rows.length} journey(s) · first {Math.min(PREVIEW_ROWS, report.rows.length)} shown
+                </div>
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/40 text-left uppercase tracking-wide text-slate">
+                        {["Container No", "Size", "Origin", "Destination", "Truck", "Driver", "Load Time", "Status"].map((h) => (
+                          <th key={h} className="px-3 py-2 font-medium">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.rows.slice(0, PREVIEW_ROWS).map((r, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="px-3 py-1.5 font-mono">{r["Container No"]}</td>
+                          <td className="px-3 py-1.5">{r.Size}</td>
+                          <td className="px-3 py-1.5">{r.Origin}</td>
+                          <td className="px-3 py-1.5">{r.Destination}</td>
+                          <td className="px-3 py-1.5">{r.Truck}</td>
+                          <td className="px-3 py-1.5">{r.Driver || <span className="text-danger">Missing</span>}</td>
+                          <td className="whitespace-nowrap px-3 py-1.5">{r["Load Time"]}</td>
+                          <td className="px-3 py-1.5">{r.Status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button variant={duplicateOf ? "destructive" : "default"} onClick={runImport}>
+                  <PlayCircle /> {duplicateOf ? "Record rejected duplicate" : "Import report"}
                 </Button>
               </div>
-            </div>
+            </SectionCard>
           )}
-        </SectionCard>
+        </div>
       )}
 
       {phase === "processing" && (
-        <SectionCard title="Processing report" description={picked?.name}>
+        <SectionCard title="Processing report" description={sheet?.fileName}>
           <ol className="space-y-3 py-2">
             {STAGES.map((label, i) => {
               const done = i < stage;
               const active = i === stage;
               return (
                 <li key={label} className="flex items-center gap-3 text-sm">
-                  <span
-                    className={cn(
-                      "flex size-6 items-center justify-center rounded-full",
-                      done ? "bg-success text-white" : active ? "bg-navy text-white" : "bg-muted text-slate",
-                    )}
-                  >
+                  <span className={cn("flex size-6 items-center justify-center rounded-full", done ? "bg-success text-white" : active ? "bg-navy text-white" : "bg-muted text-slate")}>
                     {done ? <Check className="size-3.5" /> : active ? <Loader2 className="size-3.5 animate-spin" /> : <span className="text-xs">{i + 1}</span>}
                   </span>
                   <span className={cn(active ? "font-semibold text-navy" : done ? "text-ink" : "text-slate")}>{label}</span>
@@ -207,14 +326,14 @@ export function ImportWizard() {
               <CheckCircle2 className="text-success" />
               <AlertTitle className="text-emerald-800">Import {result.record.id} completed</AlertTitle>
               <AlertDescription className="text-emerald-800/90">
-                {result.record.fileName} · <TerminalTag code={result.record.terminal} className="text-xs" /> · the movement ledger, exceptions and dashboard now reflect these rows.
+                {result.record.fileName} · <TerminalTag code={result.record.terminal} className="text-xs" /> · read as “{report?.formatLabel}” and converted to the common format.
               </AlertDescription>
             </Alert>
           )}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            <StatCard label="Total rows" value={result.record.total} tone="navy" />
+            <StatCard label="Total journeys" value={result.record.total} tone="navy" />
             <StatCard label="Movements created" value={result.record.success} tone="green" />
-            <StatCard label="Invalid" value={result.record.failed} tone="red" />
+            <StatCard label="Invalid" value={result.record.failed} tone="red" hint={result.record.failed ? "Kept in the import record" : undefined} />
             <StatCard label="Duplicates held" value={result.record.duplicate} tone="orange" />
             <StatCard label="Exceptions raised" value={result.record.exceptionsRaised} tone="orange" hint="Billing blocked until resolved" />
           </div>

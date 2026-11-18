@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,8 +20,11 @@ export function StatCard({
   icon: Icon,
   tone = "navy",
   onClick,
+  action,
   className,
 }: {
+  /** Small control shown at the card's top-right (only when the card itself is not clickable). */
+  action?: ReactNode;
   label: string;
   value: string | number;
   hint?: string;
@@ -48,6 +52,7 @@ export function StatCard({
         <div className="text-xs font-medium uppercase leading-tight tracking-wide text-slate">{label}</div>
         <div className="text-2xl font-semibold leading-tight text-ink">{value}</div>
         {hint && <div className="text-xs leading-tight text-slate">{hint}</div>}
+        {action && <div className="mt-2">{action}</div>}
       </div>
     </Comp>
   );

@@ -99,7 +99,7 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
           <tbody>
             {fields.map((f) => {
               const ledger = ledgerValueFor(f.key, movement, doc, db);
-              const differs = ledger !== null && !!f.value && !sameValue(f.value, ledger, f.key, db);
+              const differs = ledger !== null && ledger !== "" && !!f.value && !sameValue(f.value, ledger, f.key, db);
               const low = f.confidence < threshold;
               return (
                 <tr key={f.key} className={cn("border-t", low && !ocr.verified && "bg-amber-50/40")}>
@@ -143,7 +143,7 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
 
       {!ocr.verified && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!canVerify} onClick={() => setConfirmVerify(true)} title={canVerify ? undefined : "Only Administrator, Operations Manager or Supervisor can verify"}>
+          <Button disabled={!canVerify} onClick={() => setConfirmVerify(true)} title={canVerify ? undefined : "Only the Manager or a Supervisor can verify"}>
             <ShieldCheck /> Verify extraction{dirty ? " (with corrections)" : ""}
           </Button>
           <Button variant="outline" disabled={!dirty} onClick={() => setDraft(null)}>

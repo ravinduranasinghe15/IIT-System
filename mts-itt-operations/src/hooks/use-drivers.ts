@@ -8,6 +8,8 @@ import {
   assignPrimeMover,
   decideLeave,
   recordAttendance,
+  reportAbsence,
+  type AbsenceInput,
   replaceDriver,
   registerDriver,
   requestLeave,
@@ -64,6 +66,8 @@ export function useDriverActions() {
         run(() => update((d) => setDriverStatus(d, id, status, note)), (r) => `${r.name} is now ${status}`),
       updateCell: (driverId: string, date: string, patch: RosterPatch) =>
         run(() => update((d) => updateRosterCell(d, driverId, date, patch)), () => "Roster updated"),
+      reportAbsence: (input: AbsenceInput) =>
+        run(() => update((d) => reportAbsence(d, input)), (r) => ({ title: "Absence reported", description: `${r.absentReason} – the Manager has been notified to arrange a replacement` })),
       attendance: (driverId: string, date: string, status: AttendanceStatus) =>
         run(() => update((d) => recordAttendance(d, driverId, date, status)), () => `Marked ${status}`),
       requestLeave: (input: LeaveInput) => run(() => update((d) => requestLeave(d, input)), (r) => ({ title: "Leave request submitted", description: `${r.id} is pending approval` })),

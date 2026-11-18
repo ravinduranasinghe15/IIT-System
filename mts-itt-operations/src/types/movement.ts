@@ -16,6 +16,8 @@ export type BillableStatus =
   | "Blocked – Exception"
   | "Pending Approval"
   | "Pending Completion"
+  | "Pending Chits"
+  | "Pending Driver Log"
   | "Non-billable";
 
 export interface MovementEvent {

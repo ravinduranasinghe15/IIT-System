@@ -11,6 +11,8 @@ const RATE_TABLE: { s: TerminalCode; d: TerminalCode; size: ContainerSize; old: 
   { s: "SAGT", d: "JCT", size: "40FT", old: 91, neu: 95, diesel: 3.5 },
   { s: "CWIT", d: "SAGT", size: "20FT", old: 48, neu: 50, diesel: 2.8 },
   { s: "CWIT", d: "SAGT", size: "40FT", old: 72, neu: 75, diesel: 2.8 },
+  { s: "SAGT", d: "CWIT", size: "20FT", old: 48, neu: 50, diesel: 2.8 },
+  { s: "SAGT", d: "CWIT", size: "40FT", old: 72, neu: 75, diesel: 2.8 },
 ];
 
 /** Billing rates were authored on a small scale; shown in LKR (x70, rounded to the nearest 50). */

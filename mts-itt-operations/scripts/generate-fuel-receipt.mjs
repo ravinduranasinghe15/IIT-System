@@ -12,7 +12,7 @@ const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, 
 const rows = [
   ["Invoice No", "FS-20261113-0412"],
   ["Date", "13 Nov 2026   10:42 AM"],
-  ["Vehicle", "WP LL-4521 (PM-001)"],
+  ["Vehicle", "LY-5516 (PM-001)"],
   ["Fuel", "Auto Diesel"],
   ["Quantity", "120.00 L"],
   ["Rate", "LKR 300.00 / L"],

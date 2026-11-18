@@ -1,12 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarCheck, Check, ChevronLeft, ChevronRight, Info, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { BellRing, CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
-import { StatCard } from "@/components/shared/stat-card";
 import { SearchInput } from "@/components/shared/search-input";
-import { NativeSelect } from "@/components/shared/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useApp } from "@/contexts/app-context";
@@ -14,9 +12,12 @@ import { useAuth } from "@/contexts/auth-context";
 import { addDays, realToday, eachDay, formatDay } from "@/lib/date-utils";
 import type { Driver, RosterEntry } from "@/types/driver";
 import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calendar";
+import { RosterMonth, addMonths, monthStart } from "./roster-month";
 import { AttendanceDialog } from "./attendance-dialog";
+import { AbsenceDialog } from "./absence-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
+import { Rows3 } from "lucide-react";
 import { SHIFT_HOURS, checkRosterRules, type WorkShift } from "@/lib/roster-rules";
 import { StatusBadge } from "@/components/shared/status-badge";
 
@@ -25,11 +26,16 @@ export function RosterView() {
   const { can, isDriver, driverId } = useAuth();
   const today = realToday();
   const [start, setStart] = useState(today);
-  const [end, setEnd] = useState(addDays(today, 13));
+  const [end, setEnd] = useState(addDays(today, 6));
+  const [pickDates, setPickDates] = useState(false);
+  const [view, setView] = useState<"grid" | "calendar">("grid");
+  const [month, setMonth] = useState(monthStart(today));
+  const [selDate, setSelDate] = useState(today);
+  const [showRules, setShowRules] = useState(false);
   const [q, setQ] = useState("");
-  const [shiftFilter, setShiftFilter] = useState("");
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [absenceOpen, setAbsenceOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
 
@@ -47,17 +53,16 @@ export function RosterView() {
     setEnd(t);
   };
   const shift = (dir: 1 | -1) => setRange(addDays(start, dir * span), addDays(end, dir * span));
-  const isDefaultRange = start === today && end === addDays(today, 13);
+  const isDefaultRange = start === today && end === addDays(today, span - 1);
 
   const drivers = useMemo(() => {
     const s = q.trim().toLowerCase();
     return db.drivers.filter((d) => {
       if (isDriver) return d.id === driverId;
       if (d.status === "Inactive") return false;
-      if (shiftFilter && d.shift !== shiftFilter) return false;
       return !s || d.name.toLowerCase().includes(s) || d.id.toLowerCase().includes(s);
     });
-  }, [db.drivers, isDriver, driverId, q, shiftFilter]);
+  }, [db.drivers, isDriver, driverId, q]);
   const roster = useMemo(() => db.roster.filter((r) => drivers.some((d) => d.id === r.driverId)), [db.roster, drivers]);
 
   const todayRows = db.roster.filter((r) => r.date === today && isWorkingShift(r.shift));
@@ -66,8 +71,6 @@ export function RosterView() {
   const nightToday = todayRows.filter((r) => r.shift === "Night" && r.attendance !== "Absent").length;
   const absentToday = todayRows.filter((r) => r.attendance === "Absent").length;
   const pendingLeave = db.leaves.filter((l) => l.status === "Pending").length;
-  const activeDrivers = db.drivers.filter((d) => d.status === "Active").length;
-  const activePms = db.primeMovers.filter((p) => p.status === "Active").length;
 
   const ruleChecks = useMemo(() => checkRosterRules(drivers, db.roster, start, end), [drivers, db.roster, start, end]);
   const openShifts = [...db.openShifts].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -134,10 +137,15 @@ export function RosterView() {
         description={
           isDriver
             ? `Your shifts and prime-mover assignments${own ? ` (${own.name})` : ""}.`
-            : "Shift calendar with a selectable date range and morning, afternoon and night cover for continuous 24-hour operation."
+            : "Who works which shift, and on which truck."
         }
         actions={
           <>
+            {canAttend && (
+              <Button variant="destructive" onClick={() => setAbsenceOpen(true)}>
+                <BellRing /> Driver not coming
+              </Button>
+            )}
             {canAttend && (
               <Button variant="outline" onClick={() => setAttendanceOpen(true)}>
                 <CalendarCheck /> Record attendance
@@ -148,43 +156,39 @@ export function RosterView() {
         }
       />
 
-      {!isDriver && (
-        <>
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <StatCard label="Morning shift today" value={morningToday} icon={Sun} tone="orange" hint={`${SHIFT_HOURS.Morning.range} · excl. absent`} />
-            <StatCard label="Afternoon shift today" value={afternoonToday} icon={Sunset} tone="orange" hint={`${SHIFT_HOURS.Afternoon.range} · excl. absent`} />
-            <StatCard label="Night shift today" value={nightToday} icon={Moon} tone="navy" hint={`${SHIFT_HOURS.Night.range} · excl. absent`} />
-            <StatCard label="Absent today" value={absentToday} icon={UserRoundX} tone={absentToday ? "red" : "grey"} />
-            <StatCard label="Pending leave requests" value={pendingLeave} icon={UserRoundCheck} tone={pendingLeave ? "orange" : "grey"} />
-          </div>
-
-          <div className="mb-4 flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-            <Info className="mt-0.5 size-4 shrink-0" />
-            <div>
-              <div className="font-medium">Staffing rules need MTS confirmation</div>
-              <p className="text-xs leading-relaxed">
-                The proposal mentions 9 prime movers, 14 drivers and &quot;3 drivers per truck&quot;, but these are unconfirmed and are <strong>not enforced</strong> here. Assignments are fully editable and the
-                configurable value is set in Settings (drivers per truck:{" "}
-                <strong>{db.settings.driversPerTruck ?? "not set"}</strong>). Currently registered: {activeDrivers} active drivers, {activePms} active prime movers. Shift hours and roster rules below are demo defaults (to be confirmed with MTS).
-              </p>
+      {/* Today at a glance + what the shifts mean */}
+      <div className="mb-4 grid grid-cols-6 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-5">
+        {([
+          { k: "Morning", n: morningToday, icon: Sun, cls: "bg-sky-50 text-sky-900 ring-sky-200" },
+          { k: "Afternoon", n: afternoonToday, icon: Sunset, cls: "bg-orange-50 text-orange-900 ring-orange-200" },
+          { k: "Night", n: nightToday, icon: Moon, cls: "bg-slate-800 text-white ring-slate-900/30" },
+        ] as const).map(({ k, n, icon: Icon, cls }) => (
+          <div key={k} className={`col-span-2 flex flex-col items-start gap-1 rounded-xl p-2.5 ring-1 ring-inset sm:col-span-1 sm:flex-row sm:items-center sm:gap-3 sm:p-3 ${cls}`}>
+            <Icon className="size-5 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-2xl font-semibold leading-none tabular-nums">{n}</div>
+              <div className="mt-1 text-xs font-medium">{k}<span className="hidden sm:inline"> · {SHIFT_HOURS[k].range}</span></div>
             </div>
           </div>
-        </>
-      )}
-
-      <div className="mb-4 rounded-xl border bg-card p-3 shadow-sm">
-        <div className="mb-2 text-xs font-medium text-ink">How the 24 hours are covered (one operational day, 7 AM → 7 AM) · three 8-hour shifts</div>
-        <div className="flex overflow-hidden rounded-lg text-xs font-medium">
-          <div className="flex flex-1 items-center justify-center gap-1.5 bg-sky-100 py-2 text-sky-900"><Sun className="size-3.5" /> Morning · {SHIFT_HOURS.Morning.range}</div>
-          <div className="flex flex-1 items-center justify-center gap-1.5 bg-orange-100 py-2 text-orange-900"><Sunset className="size-3.5" /> Afternoon · {SHIFT_HOURS.Afternoon.range}</div>
-          <div className="flex flex-1 items-center justify-center gap-1.5 bg-slate-800 py-2 text-white"><Moon className="size-3.5" /> Night · {SHIFT_HOURS.Night.range}</div>
+        ))}
+        <div className="col-span-3 flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border sm:col-span-1">
+          <UserRoundX className={`size-5 shrink-0 ${absentToday ? "text-danger" : "text-slate"}`} />
+          <div>
+            <div className="text-2xl font-semibold leading-none tabular-nums text-ink">{absentToday}</div>
+            <div className="mt-1 text-xs text-slate">Absent today</div>
+          </div>
         </div>
-        <div className="mt-1 flex justify-between text-[10px] text-slate"><span>7 AM</span><span>3 PM</span><span>11 PM</span><span>7 AM</span></div>
-        <p className="mt-1 text-[11px] text-slate">A driver works one 8-hour shift a day, rests at least 8 hours between shifts, and has at least one day off every week. A night shift that starts on Monday finishes on Tuesday morning and counts as Monday.</p>
+        <div className="col-span-3 flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border sm:col-span-1">
+          <UserRoundCheck className={`size-5 shrink-0 ${pendingLeave ? "text-warning" : "text-slate"}`} />
+          <div>
+            <div className="text-2xl font-semibold leading-none tabular-nums text-ink">{pendingLeave}</div>
+            <div className="mt-1 text-xs text-slate">Leave requests waiting</div>
+          </div>
+        </div>
       </div>
 
-      {!isDriver && canEdit && openShifts.length > 0 && (
-        <SectionCard title={`Open shifts (${openShifts.length})`} description="Shifts that lost their driver because of approved leave. Pick a free driver for each." bodyClassName="p-0" className="mb-4 border-amber-300">
+      {openShifts.length > 0 && (
+        <SectionCard title={`Open shifts (${openShifts.length})`} description={canEdit ? "These shifts lost their driver (approved leave, or the driver is not coming). Pick a free driver for each." : "These shifts need a replacement driver. The Manager has been notified."} bodyClassName="p-0" className="mb-4 border-amber-300">
           <ul className="divide-y">
             {openShifts.map((o) => (
               <li key={o.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
@@ -192,9 +196,13 @@ export function RosterView() {
                   <div className="font-medium text-ink">{formatDay(o.date, "EEE dd MMM")} · {o.shift} ({SHIFT_HOURS[o.shift].range})</div>
                   <div className="text-xs text-slate">{o.primeMoverId ?? "No truck"} · {o.reason}</div>
                 </div>
-                <Button size="sm" onClick={() => setAssign({ date: o.date, shift: o.shift, primeMoverId: o.primeMoverId, openShiftId: o.id, reason: o.reason })}>
-                  <UserCheck /> Assign driver
-                </Button>
+                {canEdit ? (
+                  <Button size="sm" onClick={() => setAssign({ date: o.date, shift: o.shift, primeMoverId: o.primeMoverId, openShiftId: o.id, reason: o.reason, fromDriverId: o.absence ? o.driverId : undefined })}>
+                    <UserCheck /> Assign driver
+                  </Button>
+                ) : (
+                  <span className="text-xs font-medium text-amber-700">Waiting for the Manager</span>
+                )}
               </li>
             ))}
           </ul>
@@ -202,82 +210,145 @@ export function RosterView() {
       )}
 
       <SectionCard
-        title={`${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM yyyy")}`}
-        description={
-          canEdit || canAttend
-            ? "Click any cell to edit the shift, prime mover or attendance. Missing cells are created when saved. A red outline means a prime mover is double-booked on a shift."
-            : "Read-only view of the roster."
-        }
+        title={view === "calendar" ? formatDay(month, "MMMM yyyy") : `${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM yyyy")}`}
+        description={canEdit || canAttend ? "Click a cell to change the shift, record attendance or replace a driver." : "Read-only view."}
         bodyClassName="p-0"
         actions={
           <>
-            {!isDriver && (
+            <SearchInput value={q} onChange={setQ} placeholder="Find driver…" className="hidden w-40 sm:block" />
+            <div className="flex overflow-hidden rounded-lg border text-xs">
+              {([["grid", "Grid", Rows3], ["calendar", "Calendar", CalendarDays]] as const).map(([k, label, Icon]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setView(k)}
+                  aria-pressed={view === k}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 font-medium ${view === k ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted"}`}
+                >
+                  <Icon className="size-3.5" /> {label}
+                </button>
+              ))}
+            </div>
+            {view === "calendar" ? (
               <>
-                <SearchInput value={q} onChange={setQ} placeholder="Find driver…" className="hidden w-40 sm:block" />
-                <NativeSelect className="hidden w-32 sm:block" value={shiftFilter} onValueChange={setShiftFilter} placeholder="All shifts" options={["Morning", "Afternoon", "Night", "Rotating"]} aria-label="Default shift filter" />
+                <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => setMonth(addMonths(month, -1))}>
+                  <ChevronLeft />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { setMonth(monthStart(today)); setSelDate(today); }}>
+                  Today
+                </Button>
+                <Button variant="outline" size="icon-sm" aria-label="Next month" onClick={() => setMonth(addMonths(month, 1))}>
+                  <ChevronRight />
+                </Button>
               </>
-            )}
+            ) : (
+              <>
+            <div className="flex overflow-hidden rounded-lg border text-xs">
+              {[7, 14].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setRange(start, addDays(start, d - 1))}
+                  className={`px-2.5 py-1.5 font-medium ${span === d ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted"}`}
+                >
+                  {d} days
+                </button>
+              ))}
+            </div>
             <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => shift(-1)}>
               <ChevronLeft />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(today, addDays(today, 13))} disabled={isDefaultRange}>
+            <Button variant="outline" size="sm" onClick={() => setRange(today, addDays(today, span - 1))} disabled={isDefaultRange}>
               Today
             </Button>
             <Button variant="outline" size="icon-sm" aria-label="Next period" onClick={() => shift(1)}>
               <ChevronRight />
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPickDates((v) => !v)}>
+              Pick dates
+            </Button>
+              </>
+            )}
           </>
         }
       >
-        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5 text-sm">
-          <label className="flex items-center gap-2 text-slate">
-            From
-            <Input type="date" value={start} onChange={(e) => setRange(e.target.value, end < e.target.value ? e.target.value : end)} className="h-8 w-40" aria-label="Roster from date" />
-          </label>
-          <label className="flex items-center gap-2 text-slate">
-            To
-            <Input type="date" value={end} min={start} onChange={(e) => setRange(start, e.target.value)} className="h-8 w-40" aria-label="Roster to date" />
-          </label>
-          <span className="text-xs text-slate">{span} day{span === 1 ? "" : "s"} shown (up to {MAX_DAYS}). Days outside the seeded roster show as not rostered.</span>
-        </div>
+        {view === "grid" && pickDates && (
+          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5 text-sm">
+            <label className="flex items-center gap-2 text-slate">
+              From
+              <Input type="date" value={start} onChange={(e) => setRange(e.target.value, end < e.target.value ? e.target.value : end)} className="h-8 w-40" aria-label="Roster from date" />
+            </label>
+            <label className="flex items-center gap-2 text-slate">
+              To
+              <Input type="date" value={end} min={start} onChange={(e) => setRange(start, e.target.value)} className="h-8 w-40" aria-label="Roster to date" />
+            </label>
+            <span className="text-xs text-slate">Up to {MAX_DAYS} days.</span>
+          </div>
+        )}
         {drivers.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate">No drivers match.</div>
+        ) : view === "calendar" ? (
+          <RosterMonth
+            month={month}
+            selected={selDate}
+            onSelect={(d) => {
+              setSelDate(d);
+              if (d.slice(0, 7) !== month.slice(0, 7)) setMonth(monthStart(d));
+            }}
+            drivers={drivers}
+            roster={roster}
+            onDriverClick={canEdit || canAttend ? (driver, date, entry) => setCell({ driver, date, entry }) : undefined}
+          />
         ) : (
           <RosterCalendar
             start={start}
             days={span}
             drivers={drivers}
             roster={roster}
-            showCoverage={!isDriver}
+            showCoverage
             onCellClick={canEdit || canAttend ? (driver, date, entry) => setCell({ driver, date, entry }) : undefined}
           />
         )}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
-          <span className="font-medium text-ink">Legend</span>
-          <span>Morning / Afternoon / Night / Off / Leave</span>
-          <span>&ldquo;→ DR-xxx&rdquo; = covered by another driver</span>
+        {view === "grid" && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Present</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Late</span>
           <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-red-500" />Absent</span>
-          <span>Cover rows exclude drivers marked absent.</span>
-        </div>
+          <span>&ldquo;→ DR-xxx&rdquo; = another driver took the shift</span>
+          <span>Red outline = truck double-booked</span>
+        </div>}
       </SectionCard>
 
-      {!isDriver && (
-        <SectionCard title="Roster rules check" description={`Checked for ${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM")} and the drivers shown above.`} className="mt-4">
-          <ul className="space-y-1.5">
-            {ruleChecks.map((c) => (
-              <li key={c.key} className="flex items-start gap-2 text-sm">
-                <span className={c.passed ? "mt-0.5 text-success" : "mt-0.5 text-danger"}>{c.passed ? <Check className="size-4" /> : <X className="size-4" />}</span>
-                <div className="min-w-0">
-                  <span className="text-ink">{c.label}</span> <span className="text-xs text-slate">· {c.detail}</span>
-                  {c.problems.length > 0 && <div className="text-xs text-danger">{c.problems.slice(0, 4).join(" · ")}{c.problems.length > 4 ? ` · +${c.problems.length - 4} more` : ""}</div>}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
-      )}
+      {/* Rules: one line when everything is fine */}
+      {(() => {
+        const failed = ruleChecks.filter((c) => !c.passed);
+        const open = showRules || failed.length > 0;
+        return (
+          <div className={`mt-4 rounded-xl border p-3 text-sm ${failed.length ? "border-red-200 bg-red-50/50" : "border-emerald-200 bg-emerald-50/50"}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={failed.length ? "text-danger" : "text-success"}>{failed.length ? <X className="size-4" /> : <Check className="size-4" />}</span>
+              <span className="font-medium text-ink">{failed.length ? `${failed.length} roster rule${failed.length === 1 ? "" : "s"} need attention` : "All roster rules are met for these dates"}</span>
+              {failed.length === 0 && (
+                <button type="button" className="ml-auto text-xs font-medium text-brand hover:underline" onClick={() => setShowRules((v) => !v)}>
+                  {showRules ? "Hide rules" : "Show rules"}
+                </button>
+              )}
+            </div>
+            {open && (
+              <ul className="mt-2 space-y-1">
+                {ruleChecks.map((c) => (
+                  <li key={c.key} className="flex items-start gap-2 text-xs">
+                    <span className={c.passed ? "mt-0.5 text-success" : "mt-0.5 text-danger"}>{c.passed ? <Check className="size-3.5" /> : <X className="size-3.5" />}</span>
+                    <div className="min-w-0 text-slate">
+                      <span className="text-ink">{c.label}</span>
+                      {c.problems.length > 0 && <div className="text-danger">{c.problems.slice(0, 4).join(" · ")}{c.problems.length > 4 ? ` · +${c.problems.length - 4} more` : ""}</div>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="mt-4">
         <LeavePanel driverId={isDriver ? driverId : undefined} onRequest={() => setLeaveOpen(true)} />
@@ -286,6 +357,7 @@ export function RosterView() {
       {cell && <RosterCellDialog driver={cell.driver} date={cell.date} entry={db.roster.find((r) => r.driverId === cell.driver.id && r.date === cell.date)} onClose={() => setCell(null)} />}
       {assign && <AssignDriverDialog target={assign} onClose={() => setAssign(null)} />}
       {attendanceOpen && <AttendanceDialog open onOpenChange={setAttendanceOpen} />}
+      {absenceOpen && <AbsenceDialog open onOpenChange={setAbsenceOpen} />}
       {leaveOpen && <LeaveRequestDialog open onOpenChange={setLeaveOpen} fixedDriverId={isDriver ? driverId : undefined} />}
     </div>
   );

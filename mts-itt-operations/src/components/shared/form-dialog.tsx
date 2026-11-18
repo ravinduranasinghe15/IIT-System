@@ -26,13 +26,13 @@ export function FormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[90vh] gap-0 overflow-hidden p-0", SIZES[size])}>
-        <DialogHeader className="border-b px-5 py-4">
+      <DialogContent className={cn("flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0", SIZES[size])}>
+        <DialogHeader className="shrink-0 border-b px-5 py-4">
           <DialogTitle className="text-base text-navy">{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className="scroll-thin max-h-[calc(90vh-9rem)] overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <DialogFooter className="m-0 rounded-none border-t bg-muted/40 px-5 py-3">{footer}</DialogFooter>}
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        {footer && <DialogFooter className="m-0 shrink-0 rounded-none border-t bg-muted/40 px-5 py-3">{footer}</DialogFooter>}
       </DialogContent>
     </Dialog>
   );

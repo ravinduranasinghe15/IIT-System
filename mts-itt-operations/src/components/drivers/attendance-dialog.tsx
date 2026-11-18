@@ -13,6 +13,7 @@ import { realToday, formatDay } from "@/lib/date-utils";
 import { SHIFT_HOURS, type WorkShift } from "@/lib/roster-rules";
 import { useAuth } from "@/contexts/auth-context";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
+import { AbsenceDialog } from "./absence-dialog";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types/driver";
 
@@ -28,6 +29,7 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
   const actions = useDriverActions();
   const { can } = useAuth();
   const [assign, setAssign] = useState<AssignTarget | null>(null);
+  const [absent, setAbsent] = useState<{ driverId: string; date: string } | null>(null);
   const [date, setDate] = useState(initialDate ?? realToday());
 
   const rows = useMemo(
@@ -77,7 +79,11 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
                       key={o.value}
                       type="button"
                       data-on={r.attendance === o.value}
-                      onClick={() => r.attendance !== o.value && actions.attendance(r.driverId, date, o.value)}
+                      onClick={() => {
+                        if (r.attendance === o.value) return;
+                        if (o.value === "Absent") setAbsent({ driverId: r.driverId, date });
+                        else actions.attendance(r.driverId, date, o.value);
+                      }}
                       className={cn("border-r px-3 py-1 text-xs font-medium text-slate last:border-r-0 hover:bg-muted", o.className)}
                     >
                       {o.value}
@@ -100,6 +106,7 @@ export function AttendanceDialog({ open, onOpenChange, initialDate }: { open: bo
       )}
     </FormDialog>
       {assign && <AssignDriverDialog target={assign} onClose={() => setAssign(null)} />}
+      {absent && <AbsenceDialog open onOpenChange={(o) => !o && setAbsent(null)} initialDriverId={absent.driverId} initialDate={absent.date} />}
     </>
   );
 }

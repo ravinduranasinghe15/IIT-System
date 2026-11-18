@@ -75,7 +75,7 @@ export function submitInvoice(draft: DB, id: string, note = ""): MutationResult 
 
 export function approveInvoice(draft: DB, id: string, note = ""): MutationResult {
   const actor = actorOf(draft);
-  if (!can(actor.role, "invoice.approve")) return { ok: false, error: "Only Finance Managers and Administrators can approve invoices." };
+  if (!can(actor.role, "invoice.approve")) return { ok: false, error: "Only the Manager can approve invoices." };
   const inv = draft.invoices.find((i) => i.id === id);
   if (!inv) return { ok: false, error: "Invoice not found." };
   if (inv.status !== "Pending Approval") return { ok: false, error: "Only invoices pending approval can be approved." };

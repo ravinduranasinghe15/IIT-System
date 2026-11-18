@@ -20,6 +20,15 @@ export interface DocHistoryEntry {
   action: string;
 }
 
+/** Header of a driver log sheet (one sheet per driver per shift), entered by the supervisor on upload. */
+export interface DriverLogMeta {
+  driverId: string | null;
+  primeMoverId: string | null;
+  /** yyyy-MM-dd – start date of the shift (a night shift ends 07:00 next day) */
+  date: string;
+  shift: "Morning" | "Afternoon" | "Night";
+}
+
 export interface EvidenceDoc {
   id: string;
   name: string;
@@ -29,6 +38,8 @@ export interface EvidenceDoc {
   uploadedAt: string;
   uploadedBy: string;
   movementId: string | null;
+  /** Set for Driver Log Sheets uploaded in the Driver Logs section */
+  driverLog?: DriverLogMeta;
   /** Data URL for user uploads (small files only). Seeded docs render a generated placeholder. */
   dataUrl?: string;
   history: DocHistoryEntry[];

@@ -19,7 +19,7 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const SYN: Record<GpsFieldKey, string[]> = {
   vehicle: ["vehicle", "vehicleid", "vehicleno", "vehiclename", "registrationno", "registration", "regno", "reg", "unit", "asset", "truck", "truckno", "primemover"],
   date: ["date", "day", "tripdate", "reportdate", "datetime", "timestamp"],
-  litres: ["fuelconsumedl", "fuelconsumed", "fuelused", "fuelusedl", "fuel", "fuell", "litres", "liters", "fuelconsumption", "consumedl"],
+  litres: ["fuelconsumedl", "fuelconsumed", "fuelused", "fuelusedl", "estimatedfuell", "estimatedfuel", "fuel", "fuell", "litres", "liters", "fuelconsumption", "consumedl"],
   distanceKm: ["distancekm", "distance", "mileage", "mileagekm", "km", "tripdistance", "tripdistancekm"],
   idleMin: ["idletimemin", "idletime", "idle", "idling", "idlingtime", "idlemin"],
   stops: ["stoppagecount", "stoppages", "stops", "stopcount", "numberofstops"],

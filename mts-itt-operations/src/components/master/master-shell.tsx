@@ -46,7 +46,7 @@ export function MasterShell({
         <EmptyState
           icon={Lock}
           title="Not available for this demo role"
-          description={`The ${role} role cannot open ${title}. Master data is limited to Administrator and Operations Manager (rates: Administrator and Finance Manager).`}
+          description={`The ${role} role cannot open ${title}. Master data is limited to the Manager.`}
           action={
             <Button render={<Link href="/master-data" />} variant="outline">
               Back to Master Data

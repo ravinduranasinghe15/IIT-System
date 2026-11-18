@@ -26,7 +26,7 @@ const schema = z
   .refine((v) => v.role !== "Driver" || v.driverId !== "", { path: ["driverId"], message: "Driver users must be linked to a Driver record" });
 type Values = z.infer<typeof schema>;
 
-const blank: Values = { name: "", email: "", role: "Operations Staff", status: "Active", driverId: "" };
+const blank: Values = { name: "", email: "", role: "Supervisor", status: "Active", driverId: "" };
 
 export function UserFormDialog({ open, user, onClose }: { open: boolean; user: AppUser | null; onClose: () => void }) {
   const { db, update } = useApp();

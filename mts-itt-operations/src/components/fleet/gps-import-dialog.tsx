@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/contexts/app-context";
 import { useFleetActions } from "@/hooks/use-fleet";
 import { parseSpreadsheet, type ParsedSheet } from "@/lib/excel-parser";
+import { GPS_LITRES_PER_KM, parseTrackMyCarTrips } from "@/lib/gps-trips";
 import { GPS_FIELDS, suggestGpsMapping, validateGpsRows, type GpsMapping, type GpsRowResult, type GpsRowStatus } from "@/lib/gps-import";
 import { formatDate } from "@/lib/date-utils";
 import { cn, formatNumber } from "@/lib/utils";
@@ -30,6 +31,7 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [includeOverlap, setIncludeOverlap] = useState(false);
+  const [tripsLayout, setTripsLayout] = useState(false);
 
   const results = useMemo<GpsRowResult[]>(() => (sheet ? validateGpsRows(db, sheet, mapping) : []), [db, sheet, mapping]);
   const counts = useMemo(() => {
@@ -47,7 +49,9 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
     setLoading(true);
     setError("");
     try {
-      const parsed = await parseSpreadsheet(file);
+      const trips = await parseTrackMyCarTrips(file);
+      const parsed = trips ?? (await parseSpreadsheet(file));
+      setTripsLayout(!!trips);
       setSheet(parsed);
       setMapping(suggestGpsMapping(parsed.headers));
       setIncludeOverlap(false);
@@ -62,12 +66,14 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const reset = () => {
     setSheet(null);
     setMapping({});
+    setTripsLayout(false);
     setError("");
   };
 
   const confirm = () => {
     if (!sheet) return;
-    if (actions.importGps({ fileName: sheet.fileName, rows: importable })) onOpenChange(false);
+    const note = tripsLayout ? `Fuel estimated from GPS distance at ${GPS_LITRES_PER_KM} L/km` : undefined;
+    if (actions.importGps({ fileName: sheet.fileName, rows: importable, note })) onOpenChange(false);
   };
 
   return (
@@ -75,7 +81,7 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
       open={open}
       onOpenChange={onOpenChange}
       title="Import Track My Car file"
-      description="CSV / XLSX GPS export. Records are added as GPS fuel records – existing fuel records are never changed."
+      description="Track My Car export (Trips report .xlsx, or a daily CSV). Records are added as GPS fuel records – existing fuel records are never changed."
       size="xl"
       footer={
         <>
@@ -103,8 +109,8 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
           )}
           {error && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
           <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-sm">
-            <span className="text-slate">No file handy? Use the sample export (PM-001 to PM-009, 1–12 Nov 2026).</span>
-            <Button variant="outline" size="sm" render={<a href="/documents/sample-trackmycar.csv" download />}>
+            <span className="text-slate">No file handy? Use the sample Trips export (PM-001 to PM-009, 1–12 Nov 2026).</span>
+            <Button variant="outline" size="sm" render={<a href="/documents/13.11.2026_Trips-track-my-car.xlsx" download />}>
               <Download /> Sample file
             </Button>
           </div>
@@ -118,6 +124,11 @@ export function GpsImportDialog({ open, onOpenChange }: { open: boolean; onOpenC
               · {sheet.rows.length} rows · sheet “{sheet.sheetName}” · {sheet.fileSizeKb} KB
             </span>
           </div>
+          {tripsLayout && (
+            <p className="flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> Track My Car Trips report recognised. It has no fuel readings, so trips were totalled per vehicle per day and fuel is estimated from the distance at {GPS_LITRES_PER_KM} L/km. Actual fuel comes from the fuel slips / invoices.
+            </p>
+          )}
           {sameFile && (
             <p className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> A file named “{sheet.fileName}” was already imported as {sameFile.id} on {formatDate(sameFile.uploadedAt)}. Rows that fall in already-imported periods are flagged below.

@@ -7,216 +7,216 @@ export const DEMO_FUEL_INVOICES: DemoFuelInvoice[] = [
   {
     "vehicleId": "PM-001",
     "date": "2026-11-03",
-    "litres": 145.1,
-    "amount": 43530,
+    "litres": 154.8,
+    "amount": 46440,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1103-0011"
   },
   {
     "vehicleId": "PM-001",
     "date": "2026-11-07",
-    "litres": 140.9,
-    "amount": 42270,
+    "litres": 150.2,
+    "amount": 45060,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1107-0012"
   },
   {
     "vehicleId": "PM-001",
     "date": "2026-11-11",
-    "litres": 140.9,
-    "amount": 42270,
+    "litres": 150.3,
+    "amount": 45090,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1111-0013"
   },
   {
     "vehicleId": "PM-002",
     "date": "2026-11-03",
-    "litres": 210.7,
-    "amount": 63210,
+    "litres": 200.6,
+    "amount": 60180,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1103-0021"
   },
   {
     "vehicleId": "PM-002",
     "date": "2026-11-07",
-    "litres": 204.5,
-    "amount": 61350,
+    "litres": 194.7,
+    "amount": 58410,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1107-0022"
   },
   {
     "vehicleId": "PM-002",
     "date": "2026-11-11",
-    "litres": 204.6,
-    "amount": 61380,
+    "litres": 194.7,
+    "amount": 58410,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1111-0023"
   },
   {
     "vehicleId": "PM-003",
     "date": "2026-11-03",
-    "litres": 260.8,
-    "amount": 78240,
+    "litres": 170.3,
+    "amount": 51090,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1103-0031"
   },
   {
     "vehicleId": "PM-003",
     "date": "2026-11-07",
-    "litres": 253.2,
-    "amount": 75960,
+    "litres": 165.3,
+    "amount": 49590,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1107-0032"
   },
   {
     "vehicleId": "PM-003",
     "date": "2026-11-11",
-    "litres": 253.2,
-    "amount": 75960,
+    "litres": 165.4,
+    "amount": 49620,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1111-0033"
   },
   {
     "vehicleId": "PM-004",
     "date": "2026-11-03",
-    "litres": 208.7,
-    "amount": 62610,
+    "litres": 225.3,
+    "amount": 67590,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1103-0041"
   },
   {
     "vehicleId": "PM-004",
     "date": "2026-11-07",
-    "litres": 202.5,
-    "amount": 60750,
+    "litres": 218.7,
+    "amount": 65610,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1107-0042"
   },
   {
     "vehicleId": "PM-004",
     "date": "2026-11-11",
-    "litres": 202.5,
-    "amount": 60750,
+    "litres": 218.7,
+    "amount": 65610,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1111-0043"
   },
   {
     "vehicleId": "PM-005",
     "date": "2026-11-03",
-    "litres": 192.8,
-    "amount": 57840,
+    "litres": 196.2,
+    "amount": 58860,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1103-0051"
   },
   {
     "vehicleId": "PM-005",
     "date": "2026-11-07",
-    "litres": 187.2,
-    "amount": 56160,
+    "litres": 190.4,
+    "amount": 57120,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1107-0052"
   },
   {
     "vehicleId": "PM-005",
     "date": "2026-11-11",
-    "litres": 187.2,
-    "amount": 56160,
+    "litres": 190.5,
+    "amount": 57150,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1111-0053"
   },
   {
     "vehicleId": "PM-006",
     "date": "2026-11-03",
-    "litres": 177.4,
-    "amount": 53220,
+    "litres": 164.1,
+    "amount": 49230,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1103-0061"
   },
   {
     "vehicleId": "PM-006",
     "date": "2026-11-07",
-    "litres": 172.2,
-    "amount": 51660,
+    "litres": 159.2,
+    "amount": 47760,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1107-0062"
   },
   {
     "vehicleId": "PM-006",
     "date": "2026-11-11",
-    "litres": 172.3,
-    "amount": 51690,
+    "litres": 159.2,
+    "amount": 47760,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1111-0063"
   },
   {
     "vehicleId": "PM-007",
     "date": "2026-11-03",
-    "litres": 225.7,
-    "amount": 67710,
+    "litres": 212.3,
+    "amount": 63690,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1103-0071"
   },
   {
     "vehicleId": "PM-007",
     "date": "2026-11-07",
-    "litres": 219,
-    "amount": 65700,
+    "litres": 206,
+    "amount": 61800,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1107-0072"
   },
   {
     "vehicleId": "PM-007",
     "date": "2026-11-11",
-    "litres": 219,
-    "amount": 65700,
+    "litres": 206,
+    "amount": 61800,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1111-0073"
   },
   {
     "vehicleId": "PM-008",
     "date": "2026-11-03",
-    "litres": 217.7,
-    "amount": 65310,
+    "litres": 176.8,
+    "amount": 53040,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1103-0081"
   },
   {
     "vehicleId": "PM-008",
     "date": "2026-11-07",
-    "litres": 211.3,
-    "amount": 63390,
+    "litres": 171.6,
+    "amount": 51480,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1107-0082"
   },
   {
     "vehicleId": "PM-008",
     "date": "2026-11-11",
-    "litres": 211.4,
-    "amount": 63420,
+    "litres": 171.5,
+    "amount": 51450,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1111-0083"
   },
   {
     "vehicleId": "PM-009",
     "date": "2026-11-03",
-    "litres": 188.3,
-    "amount": 56490,
+    "litres": 193.5,
+    "amount": 58050,
     "station": "Lanka Fuel Station, Peliyagoda",
     "invoiceNo": "FS-1103-0091"
   },
   {
     "vehicleId": "PM-009",
     "date": "2026-11-07",
-    "litres": 182.7,
-    "amount": 54810,
+    "litres": 187.8,
+    "amount": 56340,
     "station": "Lanka Fuel Station, Kelaniya",
     "invoiceNo": "FS-1107-0092"
   },
   {
     "vehicleId": "PM-009",
     "date": "2026-11-11",
-    "litres": 182.7,
-    "amount": 54810,
+    "litres": 187.7,
+    "amount": 56310,
     "station": "Western Fuel Centre, Wattala",
     "invoiceNo": "FS-1111-0093"
   }

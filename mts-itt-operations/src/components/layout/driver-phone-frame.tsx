@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LayoutDashboard, Route, Smartphone } from "lucide-react";
+import { CalendarDays, ClipboardList, FileText, LayoutDashboard, Route, Smartphone, Users } from "lucide-react";
 import { NativeSelect } from "@/components/shared/native-select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -31,10 +31,12 @@ export function useIsDesktop(): boolean {
 }
 
 /**
- * Desktop view for the Driver role: the real app rendered in a phone-sized iframe, so every
- * responsive breakpoint behaves exactly as it would on a driver's phone. Data is shared through
+ * Desktop view for the mobile-first roles (Driver, Supervisor): the real app rendered in a phone-sized iframe, so every
+ * responsive breakpoint behaves exactly as it would on their phone. Data is shared through
  * localStorage (the context listens for storage events).
  */
+export const isMobileRole = (role: Role) => role === "Driver" || role === "Supervisor";
+
 export function DriverPhoneFrame() {
   const { role, setRole, user } = useAuth();
   const src = "/dashboard";
@@ -43,34 +45,45 @@ export function DriverPhoneFrame() {
       <div className="flex w-full max-w-xl flex-wrap items-center justify-center gap-3 rounded-xl bg-slate-800 px-4 py-2 text-sm text-slate-200">
         <Smartphone className="size-4 text-success" />
         <span>
-          Driver mobile view · <span className="font-medium text-white">{user.name}</span>
+          {role} mobile view · <span className="font-medium text-white">{user.name}</span>
         </span>
         <span className="text-xs text-slate-400">Demo role</span>
         <NativeSelect className="w-44" value={role} onValueChange={(v) => setRole(v as Role)} options={[...ROLES]} aria-label="Switch demo role" />
-        <Button size="sm" variant="secondary" onClick={() => setRole("Administrator")}>
+        <Button size="sm" variant="secondary" onClick={() => setRole("Manager")}>
           Exit to desktop
         </Button>
       </div>
       <div className="relative shrink-0 rounded-[3rem] border-[10px] border-black bg-black shadow-2xl" style={{ width: 390 + 20, height: "min(844px, calc(100dvh - 7rem))" }}>
         <div className="absolute left-1/2 top-0 z-10 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-black" />
-        <iframe title="Driver mobile app preview" src={src} className="size-full rounded-[2.2rem] bg-background" />
+        <iframe title={`${role} mobile app preview`} src={src} className="size-full rounded-[2.2rem] bg-background" />
       </div>
-      <p className="text-xs text-slate-400">Live phone-sized preview – drivers see only their own movements and roster, with no financial data.</p>
+      <p className="text-xs text-slate-400">
+        {role === "Driver" ? "Live phone-sized preview – drivers see only their own movements and roster, with no financial data." : "Live phone-sized preview – supervisors work from their phone: chits, driver logs, attendance and exceptions."}
+      </p>
     </div>
   );
 }
 
-const TABS = [
+const DRIVER_TABS = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/movements", label: "Movements", icon: Route },
   { href: "/drivers/roster", label: "Roster", icon: CalendarDays },
 ];
+const SUPERVISOR_TABS = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/movements", label: "Movements", icon: Route },
+  { href: "/evidence", label: "Chits", icon: FileText },
+  { href: "/driver-logs", label: "Logs", icon: ClipboardList },
+  { href: "/drivers", label: "Drivers", icon: Users },
+];
 
-/** Bottom tab bar shown to drivers on phone-sized screens. */
+/** Bottom tab bar shown to drivers and supervisors on phone-sized screens (supervisors reach Exceptions from the menu). */
 export function DriverBottomNav() {
   const pathname = usePathname();
+  const { role } = useAuth();
+  const TABS = role === "Supervisor" ? SUPERVISOR_TABS : DRIVER_TABS;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:hidden" aria-label="Driver navigation">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-card shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:hidden" aria-label={`${role} navigation`}>
       {TABS.map((t) => {
         const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
         return (

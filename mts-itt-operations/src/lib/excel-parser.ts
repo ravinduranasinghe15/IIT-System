@@ -15,7 +15,7 @@ export interface ParsedSheet {
   display: Record<string, string>[];
 }
 
-async function fingerprintOf(buf: ArrayBuffer): Promise<string> {
+export async function fingerprintOf(buf: ArrayBuffer): Promise<string> {
   try {
     if (typeof crypto !== "undefined" && crypto.subtle) {
       const digest = await crypto.subtle.digest("SHA-256", buf);

@@ -79,7 +79,7 @@ export interface ReportMeta {
   label: string;
   description: string;
   group: "Movement" | "Performance" | "Quality" | "Finance & Fuel";
-  /** Whole report is financial: restricted to Finance Manager / Administrator */
+  /** Whole report is financial: restricted to the CEO / Manager */
   financial: boolean;
   /** Filters that influence this report (others are disabled in the UI) */
   filters: FilterKey[];
@@ -674,7 +674,7 @@ function routeReport(f: ReportFilters, db: DB, canFin: boolean): ReportResult {
   return {
     columns,
     rows,
-    notes: [JOURNEY_NOTE, canFin ? "Revenue is a demo estimate: billable journeys only (per billable status) x effective-dated rate card, incl. diesel adjustment." : "Revenue columns are restricted to Finance Manager and Administrator."],
+    notes: [JOURNEY_NOTE, canFin ? "Revenue is a demo estimate: billable journeys only (per billable status) x effective-dated rate card, incl. diesel adjustment." : "Revenue columns are restricted to the CEO and the Manager."],
     summary,
     chartData: {
       title: "Journeys by route",
@@ -1068,7 +1068,7 @@ function fuelReport(f: ReportFilters, db: DB, canFin: boolean): ReportResult {
     rows,
     notes: [
       "GPS, fuel-station and manual records are preserved separately and never overwritten; this report only compares them.",
-      canFin ? "Cost data is shown to Finance Manager and Administrator only." : "Cost columns are restricted to Finance Manager and Administrator.",
+      canFin ? "Cost data is shown to the CEO and the Manager only." : "Cost columns are restricted to the CEO and the Manager.",
     ],
     summary,
     chartData: {
@@ -1085,13 +1085,13 @@ function fuelReport(f: ReportFilters, db: DB, canFin: boolean): ReportResult {
 }
 
 /**
- * Build a report. `canFinancial` must be true (Finance Manager / Administrator) for financial
+ * Build a report. `canFinancial` must be true (CEO / Manager) for financial
  * reports and money columns; otherwise financial reports return an empty restricted result.
  */
 export function buildReport(type: ReportType, filters: ReportFilters, db: DB, canFinancial = false): ReportResult {
   const meta = reportMeta(type);
   if (meta.financial && !canFinancial) {
-    return { ...EMPTY, notes: ["This report contains financial information and is restricted to Finance Manager and Administrator."] };
+    return { ...EMPTY, notes: ["This report contains financial information and is restricted to the CEO and the Manager."] };
   }
   switch (type) {
     case "daily":
