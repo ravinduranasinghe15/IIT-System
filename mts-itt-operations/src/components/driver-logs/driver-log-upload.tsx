@@ -66,7 +66,7 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
   };
 
   const submitDemo = () => {
-    update((d) => {
+    const auto = update((d) => {
       const r = uploadDocument(d, {
         name: DEMO_DRIVER_LOG.fileName,
         docType: "Driver Log Sheet",
@@ -77,8 +77,9 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
         driverLog: { driverId: DEMO_DRIVER_LOG.driverId, primeMoverId: DEMO_DRIVER_LOG.primeMoverId, date: DEMO_DRIVER_LOG.date, shift: DEMO_DRIVER_LOG.shift },
       });
       runExtraction(d, r.doc.id);
+      return !!d.documents.find((x) => x.id === r.doc.id)?.ocr?.verified;
     });
-    toast.success("Demo driver log submitted", { description: "Open it from the sheets list to verify the extracted values." });
+    toast.success("Demo driver log submitted", { description: auto ? "Confidence is above the threshold, so it was verified automatically." : "Open it from the sheets list to verify the extracted values." });
     onOpenChange(false);
   };
 
@@ -91,7 +92,8 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
       const prepared = await Promise.all(
         files.map(async (f) => ({ f, sizeKb: Math.max(1, Math.round(f.size / 1024)), dataUrl: f.size / 1024 < MAX_DATA_URL_KB ? await readAsDataUrl(f) : undefined })),
       );
-      update((d) => {
+      const autoCount = update((d) => {
+        let n = 0;
         for (const p of prepared) {
           const r = uploadDocument(d, {
             name: p.f.name,
@@ -103,9 +105,13 @@ export function DriverLogUploadDialog({ open, onOpenChange, prefill }: { open: b
             driverLog: { driverId: driverId || null, primeMoverId: primeMoverId || null, date, shift },
           });
           runExtraction(d, r.doc.id);
+          if (d.documents.find((x) => x.id === r.doc.id)?.ocr?.verified) n++;
         }
+        return n;
       });
-      toast.success(`${prepared.length} driver log sheet(s) uploaded`, { description: `${shift} shift, ${date}. Movements for that lorry / driver and shift now count as covered.` });
+      toast.success(`${prepared.length} driver log sheet(s) uploaded`, {
+        description: `${shift} shift, ${date}. ${autoCount} verified automatically (confidence above threshold)${prepared.length - autoCount ? `, ${prepared.length - autoCount} need manual verification` : ""}.`,
+      });
       onOpenChange(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");

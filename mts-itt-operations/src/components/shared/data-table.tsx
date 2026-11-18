@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "./empty-state";
 import { NativeSelect } from "./native-select";
 import { cn } from "@/lib/utils";
+import { ScrollX } from "./scroll-x";
 
 export interface Column<T> {
   key: string;
@@ -80,7 +81,7 @@ export function DataTable<T>({
 
   return (
     <div>
-      <div className="scroll-thin overflow-x-auto">
+      <ScrollX>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/60 hover:bg-muted/60">
@@ -124,7 +125,7 @@ export function DataTable<T>({
             ))}
           </TableBody>
         </Table>
-      </div>
+      </ScrollX>
       {!(hidePagerIfSinglePage && pages === 1) && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-2 text-xs text-slate">
           <div>

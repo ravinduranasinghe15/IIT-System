@@ -147,6 +147,7 @@ export function RosterMonth({
                                   {r.primeMoverId ?? "No truck"}
                                   {r.coveredBy ? ` · covered by ${r.coveredBy}` : r.coveringFor ? ` · covering ${r.coveringFor}` : ""}
                                 </span>
+                                {r.absentReason && <span className="block text-danger">Absent: {r.absentReason}</span>}
                               </span>
                               {r.attendance !== "Scheduled" && <StatusBadge status={r.attendance} />}
                             </button>

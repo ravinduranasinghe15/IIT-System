@@ -29,10 +29,11 @@ import { FleetStatus } from "./fleet-status";
 import { TerminalPerformance } from "./terminal-performance";
 import { QuickActions } from "./quick-actions";
 import { DriverRosterCard } from "./driver-roster-card";
+import { CeoDashboard } from "./ceo-dashboard";
 
 export function DashboardView() {
   const { db } = useApp();
-  const { isDriver, driverId, user } = useAuth();
+  const { isDriver, driverId, user, role } = useAuth();
   const router = useRouter();
   const today = demoToday();
 
@@ -47,6 +48,8 @@ export function DashboardView() {
 
   const description = `Operational day ${formatDay(today, "EEE dd MMM yyyy")} (07:00 → 07:00)${isDriver ? ` · showing your movements only, ${user.name}` : ""}`;
 
+  if (role === "CEO") return <CeoDashboard />;
+
   if (isDriver) {
     return (
       <div>
@@ -57,7 +60,7 @@ export function DashboardView() {
           <StatCard label="Pending / In Progress" value={stats.pending} icon={Clock} tone="orange" />
           <StatCard label="Containers Today" value={stats.containers} hint="Container units moved" icon={Container} tone="blue" />
         </div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <MovementChart data={trend} title="My daily movement trend" />
           </div>
@@ -73,7 +76,7 @@ export function DashboardView() {
   return (
     <div>
       <PageHeader title="Operations Dashboard" description={description} />
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
         <StatCard label="Movements Today" value={stats.total} hint="Journeys" icon={Route} tone="navy" onClick={() => router.push("/movements")} />
         <StatCard label="Completed" value={stats.completed} hint="Today" icon={CheckCircle2} tone="green" />
         <StatCard label="Pending" value={stats.pending} hint="Pending / in transit / review" icon={Clock} tone="orange" />
@@ -83,7 +86,7 @@ export function DashboardView() {
         <StatCard label="Containers Transported" value={stats.containers} hint={`Today · ${stats.containers20} x 20FT, ${stats.containers40} x 40FT`} icon={Container} tone="green" />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <div className="lg:col-span-2">
           <MovementChart data={trend} />
         </div>
@@ -91,20 +94,20 @@ export function DashboardView() {
         <ContainerChart data={dist} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <RecentMovements movements={recent} />
         </div>
         <QuickActions />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <RecentExceptions />
         <ImportActivity />
         <TerminalPerformance stats={tStats} />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <FleetStatus rows={fleet} />
         </div>

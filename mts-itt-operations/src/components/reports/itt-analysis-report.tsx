@@ -65,7 +65,7 @@ const Donut = ({ data, h = 190 }: { data: { name: string; value: number }[]; h?:
 export function IttAnalysisReport() {
   const { db } = useApp();
   const { role } = useAuth();
-  const canFinancial = role === "Administrator" || role === "Finance Manager";
+  const canFinancial = role === "Manager" || role === "CEO";
   const today = demoToday();
   const [kind, setKind] = useState<IttPeriod>("weekly");
   const [anchor, setAnchor] = useState(today);

@@ -10,15 +10,15 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
 ];
 
 export const SEED_AUDIT: Omit<AuditLog, "id">[] = [
-  { userId: "U-001", userName: "Hasini Jayawardena", role: "Administrator", action: "User Login (simulated)", module: "Auth", at: "2026-11-13T07:12", description: "Demo login for Hasini Jayawardena." },
-  { userId: "U-003", userName: "Nadeesha Perera", role: "Operations Staff", action: "File Imported", module: "Terminal Imports", at: "2026-11-13T08:03", description: "Imported CWIT_Daily_Report_2026-11-12.xlsx." },
+  { userId: "U-001", userName: "Hasini Jayawardena", role: "Manager", action: "User Login (simulated)", module: "Auth", at: "2026-11-13T07:12", description: "Demo login for Hasini Jayawardena." },
+  { userId: "U-003", userName: "Nadeesha Perera", role: "Manager", action: "File Imported", module: "Terminal Imports", at: "2026-11-13T08:03", description: "Imported CWIT_Daily_Report_2026-11-12.xlsx." },
   { userId: "U-004", userName: "Ranjith Herath", role: "Supervisor", action: "Chit Verified", module: "Evidence", at: "2026-11-12T20:10", description: "Verified assisted-extraction values on a loading chit." },
-  { userId: "U-002", userName: "Dinesh Kumarasinghe", role: "Operations Manager", action: "Exception Resolved", module: "Exceptions", at: "2026-11-11T12:30", description: "Resolved a damaged-container exception after evidence review.", financial: true },
-  { userId: "U-005", userName: "Shalini de Silva", role: "Finance Manager", action: "Rate Updated", module: "Master Data", at: "2026-10-01T08:00", description: "Activated October 2026 route rate card (effective 2026-10-01).", financial: true },
-  { userId: "U-001", userName: "Hasini Jayawardena", role: "Administrator", action: "Payment Approved", module: "Payments", at: "2026-10-17T14:00", description: "Approved pay run for 01 Oct – 15 Oct (simulated).", financial: true },
-  { userId: "U-001", userName: "Hasini Jayawardena", role: "Administrator", action: "Payment Approved", module: "Payments", at: "2026-11-01T14:00", description: "Approved pay run for 16 Oct – 30 Oct (simulated).", financial: true },
-  { userId: "U-001", userName: "Hasini Jayawardena", role: "Administrator", action: "Invoice Approved", module: "Invoicing", at: "2026-11-04T15:30", description: "Approved invoice MTS-202610-CWIT-001.", financial: true },
-  { userId: "U-001", userName: "Hasini Jayawardena", role: "Administrator", action: "Invoice Approved", module: "Invoicing", at: "2026-11-06T14:10", description: "Approved invoice MTS-202610-SAGT-001.", financial: true },
-  { userId: "U-002", userName: "Dinesh Kumarasinghe", role: "Operations Manager", action: "Master Data Updated", module: "Master Data", at: "2026-11-02T09:30", description: "Marked CICT as conditional pending sample report validation." },
-  { userId: "U-003", userName: "Nadeesha Perera", role: "Operations Staff", action: "File Imported", module: "Fleet", at: "2026-11-13T08:20", description: "Imported Track My Car file TrackMyCar_Fuel_Trips_2026-11-12.csv." },
+  { userId: "U-002", userName: "Dinesh Kumarasinghe", role: "CEO", action: "Exception Resolved", module: "Exceptions", at: "2026-11-11T12:30", description: "Resolved a damaged-container exception after evidence review.", financial: true },
+  { userId: "U-005", userName: "Shalini de Silva", role: "Manager", action: "Rate Updated", module: "Master Data", at: "2026-10-01T08:00", description: "Activated October 2026 route rate card (effective 2026-10-01).", financial: true },
+  { userId: "U-001", userName: "Hasini Jayawardena", role: "Manager", action: "Payment Approved", module: "Payments", at: "2026-10-17T14:00", description: "Approved pay run for 01 Oct – 15 Oct (simulated).", financial: true },
+  { userId: "U-001", userName: "Hasini Jayawardena", role: "Manager", action: "Payment Approved", module: "Payments", at: "2026-11-01T14:00", description: "Approved pay run for 16 Oct – 30 Oct (simulated).", financial: true },
+  { userId: "U-001", userName: "Hasini Jayawardena", role: "Manager", action: "Invoice Approved", module: "Invoicing", at: "2026-11-04T15:30", description: "Approved invoice MTS-202610-CWIT-001.", financial: true },
+  { userId: "U-001", userName: "Hasini Jayawardena", role: "Manager", action: "Invoice Approved", module: "Invoicing", at: "2026-11-06T14:10", description: "Approved invoice MTS-202610-SAGT-001.", financial: true },
+  { userId: "U-002", userName: "Dinesh Kumarasinghe", role: "CEO", action: "Master Data Updated", module: "Master Data", at: "2026-11-02T09:30", description: "Marked CICT as conditional pending sample report validation." },
+  { userId: "U-003", userName: "Nadeesha Perera", role: "Manager", action: "File Imported", module: "Fleet", at: "2026-11-13T08:20", description: "Imported Track My Car file TrackMyCar_Fuel_Trips_2026-11-12.csv." },
 ];

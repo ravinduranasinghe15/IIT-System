@@ -31,13 +31,13 @@ export const MOCK_DRIVERS: Driver[] = NAMES.map((name, i) => ({
 }));
 
 export const MOCK_USERS: AppUser[] = [
-  { id: "U-001", name: "Hasini Jayawardena", email: "hasini.j@mts-demo.lk", role: "Administrator", status: "Active", lastLogin: "2026-11-13T07:12" },
-  { id: "U-002", name: "Dinesh Kumarasinghe", email: "dinesh.k@mts-demo.lk", role: "Operations Manager", status: "Active", lastLogin: "2026-11-13T07:45" },
-  { id: "U-003", name: "Nadeesha Perera", email: "nadeesha.p@mts-demo.lk", role: "Operations Staff", status: "Active", lastLogin: "2026-11-13T08:03" },
+  { id: "U-001", name: "Hasini Jayawardena", email: "hasini.j@mts-demo.lk", role: "Manager", status: "Active", lastLogin: "2026-11-13T07:12" },
+  { id: "U-002", name: "Dinesh Kumarasinghe", email: "dinesh.k@mts-demo.lk", role: "CEO", status: "Active", lastLogin: "2026-11-13T07:45" },
+  { id: "U-003", name: "Nadeesha Perera", email: "nadeesha.p@mts-demo.lk", role: "Manager", status: "Active", lastLogin: "2026-11-13T08:03" },
   { id: "U-004", name: "Ranjith Herath", email: "ranjith.h@mts-demo.lk", role: "Supervisor", status: "Active", lastLogin: "2026-11-13T07:01" },
-  { id: "U-005", name: "Shalini de Silva", email: "shalini.d@mts-demo.lk", role: "Finance Manager", status: "Active", lastLogin: "2026-11-12T16:40" },
+  { id: "U-005", name: "Shalini de Silva", email: "shalini.d@mts-demo.lk", role: "Manager", status: "Active", lastLogin: "2026-11-12T16:40" },
   { id: "U-006", name: "Sampath Jayasinghe", email: "sampath.j@mts-demo.lk", role: "Driver", status: "Active", driverId: "DR-003", lastLogin: "2026-11-13T06:50" },
-  { id: "U-007", name: "Tharindu Gamage", email: "tharindu.g@mts-demo.lk", role: "Operations Staff", status: "Active", lastLogin: "2026-11-12T19:22" },
+  { id: "U-007", name: "Tharindu Gamage", email: "tharindu.g@mts-demo.lk", role: "Manager", status: "Active", lastLogin: "2026-11-12T19:22" },
   { id: "U-008", name: "Kumudu Ekanayake", email: "kumudu.e@mts-demo.lk", role: "Supervisor", status: "Active", lastLogin: "2026-11-12T19:05" },
   { id: "U-009", name: "Kasun Fernando", email: "kasun.f@mts-demo.lk", role: "Driver", status: "Disabled", driverId: "DR-002", lastLogin: "2026-10-30T18:15" },
 ];

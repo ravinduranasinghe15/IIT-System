@@ -10,7 +10,7 @@ const fail = (error: string): { ok: false; error: string } => ({ ok: false, erro
 const isClosed = (e: ExceptionRecord) => e.status === "Resolved" || e.status === "Rejected";
 const isManagerRole = (db: DB) => {
   const r = actorOf(db).role;
-  return r === "Administrator" || r === "Operations Manager";
+  return r === "Manager";
 };
 
 function find(db: DB, id: string) {

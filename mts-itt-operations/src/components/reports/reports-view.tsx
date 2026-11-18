@@ -48,7 +48,7 @@ const ICONS: Record<ReportType, LucideIcon> = {
 export function ReportsView() {
   const { db } = useApp();
   const { role, can } = useAuth();
-  const canFinancial = role === "Administrator" || role === "Finance Manager";
+  const canFinancial = role === "Manager" || role === "CEO";
   const allowed = can("reports.view");
 
   const [mode, setMode] = useState<"standard" | "itt">("itt");
@@ -66,7 +66,7 @@ export function ReportsView() {
     return (
       <div>
         <PageHeader title="Reports & Analytics" />
-        <EmptyState icon={Lock} title="Reports are not available for your role" description="Reports are available to Administrator, Operations Manager and Finance Manager." />
+        <EmptyState icon={Lock} title="Reports are not available for your role" description="Reports are available to the CEO and the Manager." />
       </div>
     );
   }
@@ -96,7 +96,7 @@ export function ReportsView() {
         <p>
           <span className="font-medium text-navy">Operational day boundary:</span> every date here is an operational day running{" "}
           {String(db.settings.opDayStartHour).padStart(2, "0")}:00 → {String(db.settings.opDayStartHour).padStart(2, "0")}:00 ({db.settings.timezone}). A movement loaded at 02:30 on the 5th belongs to the 4th.
-          Weeks are ISO (Mon–Sun) and months are calendar months, both of operational days. {role === "Operations Manager" && "Financial reports are restricted to Finance Manager and Administrator."}
+          Weeks are ISO (Mon–Sun) and months are calendar months, both of operational days.
         </p>
       </div>
 
@@ -117,7 +117,7 @@ export function ReportsView() {
                         key={r.type}
                         type="button"
                         disabled={locked}
-                        title={locked ? "Restricted to Finance Manager and Administrator" : r.description}
+                        title={locked ? "Restricted to the CEO and the Manager" : r.description}
                         onClick={() => setType(r.type)}
                         aria-pressed={active}
                         className={cn(

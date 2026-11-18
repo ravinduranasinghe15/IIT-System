@@ -1,11 +1,4 @@
-export const ROLES = [
-  "Administrator",
-  "Operations Manager",
-  "Operations Staff",
-  "Supervisor",
-  "Finance Manager",
-  "Driver",
-] as const;
+export const ROLES = ["CEO", "Manager", "Supervisor", "Driver"] as const;
 export type Role = (typeof ROLES)[number];
 
 export interface AppUser {

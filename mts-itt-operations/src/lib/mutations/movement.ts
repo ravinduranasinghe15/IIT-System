@@ -102,7 +102,7 @@ export function updateMovement(
     if (MATERIAL_FIELDS.includes(key as keyof Movement)) material = true;
   }
   if (!changes.length) return { movement: m, changes, needsApproval: false };
-  const isManager = actor.role === "Administrator" || actor.role === "Operations Manager";
+  const isManager = actor.role === "Manager";
   const needsApproval = material && db.settings.requireManagerApproval && !isManager;
   if (needsApproval) m.pendingApproval = true;
   m.updatedAt = nowOf(db);

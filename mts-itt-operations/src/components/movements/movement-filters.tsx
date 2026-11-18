@@ -46,11 +46,11 @@ export function MovementFiltersBar({ filters, onChange }: { filters: MovementFil
       {canSeeFinancials && (
         <NativeSelect className="w-48" value={filters.billable} onValueChange={(v) => set("billable", v)} placeholder="All billable states" options={BILLABLE} aria-label="Billable status" />
       )}
-      <div className="flex items-center gap-1.5 text-xs text-slate">
+      <div className="flex w-full items-center gap-1.5 text-xs text-slate sm:w-auto">
         <span>From</span>
-        <Input type="date" className="h-8 w-36" value={filters.from} onChange={(e) => set("from", e.target.value)} aria-label="From operational day" />
+        <Input type="date" className="h-8 min-w-0 flex-1 sm:w-36 sm:flex-none" value={filters.from} onChange={(e) => set("from", e.target.value)} aria-label="From operational day" />
         <span>To</span>
-        <Input type="date" className="h-8 w-36" value={filters.to} onChange={(e) => set("to", e.target.value)} aria-label="To operational day" />
+        <Input type="date" className="h-8 min-w-0 flex-1 sm:w-36 sm:flex-none" value={filters.to} onChange={(e) => set("to", e.target.value)} aria-label="To operational day" />
       </div>
       {active && (
         <Button variant="ghost" size="sm" onClick={() => onChange(EMPTY_FILTERS)}>

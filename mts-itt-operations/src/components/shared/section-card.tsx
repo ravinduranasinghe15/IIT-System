@@ -18,7 +18,7 @@ export function SectionCard({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border bg-card shadow-sm", className)}>
+    <section className={cn("min-w-0 rounded-xl border bg-card shadow-sm", className)}>
       {(title || actions) && (
         <header className="flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0">

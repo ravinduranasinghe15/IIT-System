@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/shared/loading-state";
 import { EmptyState } from "@/components/shared/empty-state";
-import { DriverPhoneFrame, DriverBottomNav, useIsEmbedded, useIsDesktop } from "./driver-phone-frame";
+import { DriverPhoneFrame, DriverBottomNav, isMobileRole, useIsEmbedded, useIsDesktop } from "./driver-phone-frame";
 import { SidebarContent } from "./app-sidebar";
 import { AppHeader } from "./app-header";
 import { useAppState } from "@/contexts/app-context";
@@ -25,8 +25,9 @@ function Shell({ children }: { children: ReactNode }) {
   const embedded = useIsEmbedded();
   const desktop = useIsDesktop();
 
-  // Drivers use the system on a phone: on desktop, show a live phone-sized preview.
-  if (isDriver && !embedded && desktop) return <DriverPhoneFrame />;
+  // Drivers and supervisors use the system on a phone: on desktop, show a live phone-sized preview.
+  const phoneRole = isMobileRole(role);
+  if (phoneRole && !embedded && desktop) return <DriverPhoneFrame />;
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">
@@ -41,7 +42,7 @@ function Shell({ children }: { children: ReactNode }) {
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader onMenu={() => setMobile(true)} />
-        <main className={cn("scroll-thin flex-1 overflow-y-auto p-4 md:p-6", isDriver && "pb-20")}>
+        <main className={cn("scroll-thin flex-1 overflow-y-auto p-4 md:p-6", phoneRole && "pb-20")}>
           <div className="mx-auto max-w-[1500px]">
             <Suspense fallback={<LoadingState />}>
               {allowed ? (
@@ -64,7 +65,7 @@ function Shell({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
-      {isDriver && <DriverBottomNav />}
+      {phoneRole && <DriverBottomNav />}
     </div>
   );
 }

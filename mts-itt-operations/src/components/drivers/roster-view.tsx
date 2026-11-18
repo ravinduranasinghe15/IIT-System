@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
+import { BellRing, CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Moon, Sun, Sunset, UserCheck, UserRoundCheck, UserRoundX, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
 import { SearchInput } from "@/components/shared/search-input";
@@ -14,6 +14,7 @@ import type { Driver, RosterEntry } from "@/types/driver";
 import { RosterCalendar, RosterCellDialog, isWorkingShift } from "./roster-calendar";
 import { RosterMonth, addMonths, monthStart } from "./roster-month";
 import { AttendanceDialog } from "./attendance-dialog";
+import { AbsenceDialog } from "./absence-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
 import { Rows3 } from "lucide-react";
@@ -34,6 +35,7 @@ export function RosterView() {
   const [q, setQ] = useState("");
   const [cell, setCell] = useState<{ driver: Driver; date: string; entry?: RosterEntry } | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [absenceOpen, setAbsenceOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
 
@@ -140,6 +142,11 @@ export function RosterView() {
         actions={
           <>
             {canAttend && (
+              <Button variant="destructive" onClick={() => setAbsenceOpen(true)}>
+                <BellRing /> Driver not coming
+              </Button>
+            )}
+            {canAttend && (
               <Button variant="outline" onClick={() => setAttendanceOpen(true)}>
                 <CalendarCheck /> Record attendance
               </Button>
@@ -150,28 +157,28 @@ export function RosterView() {
       />
 
       {/* Today at a glance + what the shifts mean */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-4 grid grid-cols-6 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-5">
         {([
           { k: "Morning", n: morningToday, icon: Sun, cls: "bg-sky-50 text-sky-900 ring-sky-200" },
           { k: "Afternoon", n: afternoonToday, icon: Sunset, cls: "bg-orange-50 text-orange-900 ring-orange-200" },
           { k: "Night", n: nightToday, icon: Moon, cls: "bg-slate-800 text-white ring-slate-900/30" },
         ] as const).map(({ k, n, icon: Icon, cls }) => (
-          <div key={k} className={`flex items-center gap-3 rounded-xl p-3 ring-1 ring-inset ${cls}`}>
+          <div key={k} className={`col-span-2 flex flex-col items-start gap-1 rounded-xl p-2.5 ring-1 ring-inset sm:col-span-1 sm:flex-row sm:items-center sm:gap-3 sm:p-3 ${cls}`}>
             <Icon className="size-5 shrink-0" />
             <div className="min-w-0">
               <div className="text-2xl font-semibold leading-none tabular-nums">{n}</div>
-              <div className="mt-1 text-xs font-medium">{k} · {SHIFT_HOURS[k].range}</div>
+              <div className="mt-1 text-xs font-medium">{k}<span className="hidden sm:inline"> · {SHIFT_HOURS[k].range}</span></div>
             </div>
           </div>
         ))}
-        <div className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border">
+        <div className="col-span-3 flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border sm:col-span-1">
           <UserRoundX className={`size-5 shrink-0 ${absentToday ? "text-danger" : "text-slate"}`} />
           <div>
             <div className="text-2xl font-semibold leading-none tabular-nums text-ink">{absentToday}</div>
             <div className="mt-1 text-xs text-slate">Absent today</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border">
+        <div className="col-span-3 flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border sm:col-span-1">
           <UserRoundCheck className={`size-5 shrink-0 ${pendingLeave ? "text-warning" : "text-slate"}`} />
           <div>
             <div className="text-2xl font-semibold leading-none tabular-nums text-ink">{pendingLeave}</div>
@@ -180,8 +187,8 @@ export function RosterView() {
         </div>
       </div>
 
-      {canEdit && openShifts.length > 0 && (
-        <SectionCard title={`Open shifts (${openShifts.length})`} description="These shifts lost their driver because of approved leave. Pick a free driver for each." bodyClassName="p-0" className="mb-4 border-amber-300">
+      {openShifts.length > 0 && (
+        <SectionCard title={`Open shifts (${openShifts.length})`} description={canEdit ? "These shifts lost their driver (approved leave, or the driver is not coming). Pick a free driver for each." : "These shifts need a replacement driver. The Manager has been notified."} bodyClassName="p-0" className="mb-4 border-amber-300">
           <ul className="divide-y">
             {openShifts.map((o) => (
               <li key={o.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
@@ -189,9 +196,13 @@ export function RosterView() {
                   <div className="font-medium text-ink">{formatDay(o.date, "EEE dd MMM")} · {o.shift} ({SHIFT_HOURS[o.shift].range})</div>
                   <div className="text-xs text-slate">{o.primeMoverId ?? "No truck"} · {o.reason}</div>
                 </div>
-                <Button size="sm" onClick={() => setAssign({ date: o.date, shift: o.shift, primeMoverId: o.primeMoverId, openShiftId: o.id, reason: o.reason })}>
-                  <UserCheck /> Assign driver
-                </Button>
+                {canEdit ? (
+                  <Button size="sm" onClick={() => setAssign({ date: o.date, shift: o.shift, primeMoverId: o.primeMoverId, openShiftId: o.id, reason: o.reason, fromDriverId: o.absence ? o.driverId : undefined })}>
+                    <UserCheck /> Assign driver
+                  </Button>
+                ) : (
+                  <span className="text-xs font-medium text-amber-700">Waiting for the Manager</span>
+                )}
               </li>
             ))}
           </ul>
@@ -346,6 +357,7 @@ export function RosterView() {
       {cell && <RosterCellDialog driver={cell.driver} date={cell.date} entry={db.roster.find((r) => r.driverId === cell.driver.id && r.date === cell.date)} onClose={() => setCell(null)} />}
       {assign && <AssignDriverDialog target={assign} onClose={() => setAssign(null)} />}
       {attendanceOpen && <AttendanceDialog open onOpenChange={setAttendanceOpen} />}
+      {absenceOpen && <AbsenceDialog open onOpenChange={setAbsenceOpen} />}
       {leaveOpen && <LeaveRequestDialog open onOpenChange={setLeaveOpen} fixedDriverId={isDriver ? driverId : undefined} />}
     </div>
   );

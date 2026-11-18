@@ -21,6 +21,7 @@ export function DriverLogsView() {
   const { db } = useApp();
   const { can, isDriver } = useAuth();
   const [upload, setUpload] = useState<{ open: boolean; prefill?: LogPrefill }>({ open: false });
+  const [showAll, setShowAll] = useState(false);
   const canUpload = can("driverlog.upload");
 
   const stats = useMemo(() => driverLogStats(db), [db]);
@@ -100,6 +101,40 @@ export function DriverLogsView() {
 
       <div className="mt-4 space-y-4">
         <SectionCard title="Missing driver logs" description="Movements loaded in a shift with no driver log sheet for that lorry or driver" bodyClassName="p-0">
+          {/* phone: one card per movement with the Upload button always in reach */}
+          <div className="md:hidden">
+            {stats.missing.length === 0 ? (
+              <div className="p-6 text-center text-sm text-slate">No missing logs – every dispatched movement is covered.</div>
+            ) : (
+              <ul className="divide-y">
+                {(showAll ? stats.missing : stats.missing.slice(0, 6)).map((r) => (
+                  <li key={r.movement.id} className="flex items-start gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/movements/${r.movement.id}`} className="font-semibold text-brand">{r.movement.id}</Link>
+                        <span className="text-xs text-slate">{r.movement.sourceTerminal} → {r.movement.destinationTerminal}</span>
+                      </div>
+                      <div className="truncate font-mono text-[11px] text-slate">{r.movement.containerNos.join(" / ")}</div>
+                      <div className="text-xs text-ink">{plate(r.movement.primeMoverId)} · {driverName(r.movement.driverId)}</div>
+                      <div className="text-xs text-danger">Missing: {r.shift} · {r.date}</div>
+                      {r.note && <div className="text-[11px] text-slate">{r.note}</div>}
+                    </div>
+                    {canUpload && (
+                      <Button size="sm" variant="outline" className="shrink-0" onClick={() => setUpload({ open: true, prefill: { driverId: r.movement.driverId, primeMoverId: r.movement.primeMoverId, date: r.date, shift: r.shift } })}>
+                        <Upload /> Upload
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {stats.missing.length > 6 && (
+              <button type="button" onClick={() => setShowAll((v) => !v)} className="w-full border-t px-4 py-2.5 text-sm font-medium text-brand">
+                {showAll ? "Show fewer" : `Show all ${stats.missing.length}`}
+              </button>
+            )}
+          </div>
+          <div className="hidden md:block">
           <DataTable
             columns={missingCols}
             rows={stats.missing}
@@ -108,6 +143,7 @@ export function DriverLogsView() {
             emptyTitle="No missing logs"
             emptyDescription="Every dispatched movement is covered by a driver log sheet."
           />
+          </div>
         </SectionCard>
         <SectionCard title="Driver log sheets" bodyClassName="p-0">
           <DataTable

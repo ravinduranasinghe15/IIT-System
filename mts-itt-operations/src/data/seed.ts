@@ -7,7 +7,7 @@ import { DEFAULT_MAPPINGS } from "./mock-imports";
 import { buildRates } from "./mock-invoices";
 import { realToday } from "@/lib/date-utils";
 
-export const DB_VERSION = 12;
+export const DB_VERSION = 14;
 
 export const DEFAULT_SETTINGS: Settings = {
   timezone: DEFAULT_TIMEZONE,
@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   requireManagerApproval: true,
   driversPerTruck: null,
   fuelVarianceThresholdPct: 5,
-  ocrConfidenceThreshold: 85,
+  ocrConfidenceThreshold: 80,
   importMappings: { CWIT: { ...DEFAULT_MAPPINGS.CWIT }, SAGT: { ...DEFAULT_MAPPINGS.SAGT } },
 };
 

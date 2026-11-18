@@ -60,7 +60,7 @@ export function ImportWizard() {
           <EmptyState
             icon={Lock}
             title="You do not have permission to run imports"
-            description="Importing terminal reports requires the Administrator, Operations Manager or Operations Staff role. Use the role switcher in the header."
+            description="Importing terminal reports requires the Manager role. Use the role switcher in the header."
             action={<Button variant="outline" render={<Link href="/terminal-imports" />}>Back to import history</Button>}
           />
         </div>

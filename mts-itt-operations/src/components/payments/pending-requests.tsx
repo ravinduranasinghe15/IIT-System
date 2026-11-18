@@ -11,7 +11,7 @@ import { pendingPayRequests } from "@/lib/mutations/payment";
 import { formatMoney } from "@/lib/utils";
 import { periodLabel } from "./payment-summary";
 
-/** Number of driver-pay requests waiting for an Administrator (for badges). */
+/** Number of driver-pay requests waiting for a Manager (for badges). */
 export function usePendingPayRequestCount(): number {
   const { db } = useApp();
   return useMemo(() => pendingPayRequests(db).length, [db]);
@@ -19,13 +19,13 @@ export function usePendingPayRequestCount(): number {
 
 /**
  * Highlighted section listing driver-pay requests submitted by Finance and waiting for approval.
- * Shown to Administrators (who approve) and to Finance Managers (who can see the request is waiting).
+ * Shown to the Manager (who approves).
  */
 export function PendingPayRequests({ className }: { className?: string }) {
   const { db } = useApp();
   const { can, role } = useAuth();
   const requests = useMemo(() => pendingPayRequests(db), [db]);
-  if (requests.length === 0 || (role !== "Administrator" && role !== "Finance Manager")) return null;
+  if (requests.length === 0 || role !== "Manager") return null;
   const approver = can("payments.approve");
 
   return (
@@ -33,7 +33,7 @@ export function PendingPayRequests({ className }: { className?: string }) {
       <header className="flex items-center gap-2 border-b border-amber-200 px-4 py-3">
         <BellRing className="size-4 text-amber-600" />
         <h2 className="text-sm font-semibold text-amber-900">
-          {requests.length} driver payment request{requests.length === 1 ? "" : "s"} waiting for {approver ? "your approval" : "Administrator approval"}
+          {requests.length} driver payment request{requests.length === 1 ? "" : "s"} waiting for {approver ? "your approval" : "Manager approval"}
         </h2>
       </header>
       <ul className="divide-y divide-amber-200">

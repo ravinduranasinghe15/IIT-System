@@ -176,6 +176,13 @@ export function updateRosterCell(d: DB, driverId: string, date: string, patch: R
   if (patch.attendance !== undefined && isWorking(entry.shift)) {
     entry.attendance = patch.attendance;
     entry.recordedBy = patch.attendance === "Scheduled" ? undefined : actor.name;
+    if (patch.attendance !== "Absent" && entry.absentReason && !entry.coveredBy) {
+      // the absence report was a mistake / the driver turned up: withdraw it and its open shift
+      entry.absentReason = undefined;
+      entry.absenceReportedBy = undefined;
+      entry.absenceReportedAt = undefined;
+      d.openShifts = d.openShifts.filter((o) => !(o.absence && o.driverId === driverId && o.date === date));
+    }
   }
   const after = `${entry.shift}${entry.primeMoverId ? ` on ${entry.primeMoverId}` : ""}, ${entry.attendance}`;
   const attendanceOnly = patch.attendance !== undefined && patch.shift === undefined && patch.primeMoverId === undefined;
@@ -192,6 +199,59 @@ export function recordAttendance(d: DB, driverId: string, date: string, status: 
   const entry = d.roster.find((r) => r.driverId === driverId && r.date === date);
   if (!entry || !isWorking(entry.shift)) throw new Error("Attendance can only be recorded for a Morning, Afternoon or Night shift.");
   return updateRosterCell(d, driverId, date, { attendance: status });
+}
+
+export interface AbsenceInput {
+  driverId: string;
+  date: string;
+  reason: string;
+  note?: string;
+}
+
+/**
+ * A driver rings the supervisor to say he is not coming: the supervisor marks the shift Absent with a reason.
+ * The shift becomes an open shift for the Manager to cover, and the Manager is notified automatically.
+ */
+export function reportAbsence(d: DB, input: AbsenceInput): RosterEntry {
+  const drv = findDriver(d, input.driverId);
+  const entry = d.roster.find((r) => r.driverId === input.driverId && r.date === input.date);
+  if (!entry || !isWorking(entry.shift)) throw new Error(`${drv.name} has no Morning, Afternoon or Night shift on ${formatDate(input.date)}.`);
+  if (entry.absentReason) throw new Error(`${drv.name}'s absence on ${formatDate(input.date)} was already reported.`);
+  if (!input.reason.trim()) throw new Error("Select the reason the driver gave.");
+  const actor = actorOf(d);
+  const shift = entry.shift as WorkShift;
+  const reason = input.note?.trim() ? `${input.reason} – ${input.note.trim()}` : input.reason;
+  entry.attendance = "Absent";
+  entry.recordedBy = actor.name;
+  entry.absentReason = reason;
+  entry.absenceReportedBy = actor.name;
+  entry.absenceReportedAt = nowOf(d);
+  if (!entry.coveredBy && !d.openShifts.some((o) => o.driverId === drv.id && o.date === input.date)) {
+    d.openShifts.push({
+      id: nextSeqId(d.openShifts.map((o) => o.id), "OS-", 4),
+      date: input.date,
+      shift,
+      primeMoverId: entry.primeMoverId,
+      driverId: drv.id,
+      reason: `${drv.name} not coming – ${reason}`,
+      createdAt: nowOf(d),
+      absence: true,
+    });
+  }
+  const range = SHIFT_HOURS[shift].range;
+  logAudit(d, {
+    action: "Driver Absence Reported",
+    module: "Roster",
+    entityId: entry.id,
+    description: `${drv.name} (${drv.id}) will not attend the ${shift} shift (${range}) on ${formatDate(input.date)}: ${reason}. Reported by ${actor.name}; replacement needed.`,
+  });
+  notify(d, {
+    title: "Driver absent – replacement needed",
+    body: `${drv.name} is not coming for the ${shift} shift (${range}) on ${formatDate(input.date)}${entry.primeMoverId ? ` (${entry.primeMoverId})` : ""}. Reason: ${reason}. Reported by ${actor.name}. Please assign a replacement.`,
+    level: "warning",
+    href: "/drivers/roster",
+  });
+  return entry;
 }
 
 /** Prime movers rostered for more than one driver on the same date and shift. */

@@ -15,10 +15,13 @@ import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { DocumentDetailDialog, ocrState } from "./document-detail";
 import { DocumentList, EMPTY_FILTERS, type DocFilters } from "./document-list";
+import { DOC_TYPES, type DocType } from "@/types/evidence";
 import { ChitSubmitDialog } from "./chit-submit-dialog";
 import { OcrDisclaimer } from "./ocr-review";
 import { movementsCovered } from "@/lib/driver-logs";
 import { MissingChitsDialog, type MissingChitRow } from "./missing-chits-dialog";
+
+const CHIT_TYPES: readonly DocType[] = DOC_TYPES.filter((t) => t !== "Driver Log Sheet");
 
 export function EvidenceView() {
   const { db } = useApp();
@@ -29,6 +32,7 @@ export function EvidenceView() {
   const docParam = params.get("doc");
   const movementParam = params.get("movement");
   const [filters, setFilters] = useState<DocFilters>(EMPTY_FILTERS);
+  const [logFilters, setLogFilters] = useState<DocFilters>(EMPTY_FILTERS);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(false);
 
@@ -40,6 +44,9 @@ export function EvidenceView() {
     () => (movementParam ? db.documents.filter((d) => d.movementId === movementParam || movementsCovered(db, d).some((m) => m.id === movementParam)) : db.documents),
     [db, movementParam],
   );
+
+  const chitDocs = useMemo(() => docs.filter((d) => d.docType !== "Driver Log Sheet"), [docs]);
+  const logDocs = useMemo(() => docs.filter((d) => d.docType === "Driver Log Sheet"), [docs]);
 
   const stats = useMemo(() => {
         const chitsByMovement = new Map<string, Set<string>>();
@@ -150,12 +157,34 @@ export function EvidenceView() {
           </Alert>
         )}
 
-        <SectionCard title="Document register" bodyClassName="p-0">
+        <SectionCard title={`Chits & supporting documents (${chitDocs.length})`} description="Loading and discharge chits, fuel invoices and other evidence" bodyClassName="p-0">
           <DocumentList
-            docs={docs}
+            docs={chitDocs}
             filters={filters}
             onFilters={setFilters}
             fixedMovementId={movementParam ?? undefined}
+            typeOptions={CHIT_TYPES}
+            onOpen={(d) => router.push(buildUrl({ doc: d.id }), { scroll: false })}
+          />
+        </SectionCard>
+
+        <SectionCard
+          title={`Driver log sheets (${logDocs.length})`}
+          description="Submitted by supervisors from the Driver Logs section – each sheet covers every movement of that lorry and shift"
+          bodyClassName="p-0"
+          actions={
+            <Button variant="outline" size="sm" render={<Link href="/driver-logs" />}>
+              Open Driver Logs
+            </Button>
+          }
+        >
+          <DocumentList
+            docs={logDocs}
+            filters={logFilters}
+            onFilters={setLogFilters}
+            fixedMovementId={movementParam ?? undefined}
+            typeOptions={["Driver Log Sheet"]}
+            emptyHint="No driver log sheets yet. Supervisors upload them in the Driver Logs section."
             onOpen={(d) => router.push(buildUrl({ doc: d.id }), { scroll: false })}
           />
         </SectionCard>

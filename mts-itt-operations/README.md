@@ -13,8 +13,8 @@ npm run dev      # http://localhost:3000
 npm run lint && npx tsc --noEmit && npm run build
 ```
 
-Use the header **role switcher** to view the app as Administrator, Operations Manager, Operations Staff, Supervisor,
-Finance Manager or Driver (frontend permissions only). *Reset demo data* is in the user menu / Settings.
+Use the header **role switcher** to view the app as CEO, Manager, Supervisor
+or Driver (frontend permissions only). *Reset demo data* is in the user menu / Settings.
 
 ## Try the lifecycle
 1. **Terminal Imports → New**: upload `public/documents/sample-cwit.xlsx` or `sample-sagt.xlsx` (real SheetJS parsing, column mapping, validation, duplicate detection). Re-upload the same file → rejected as a duplicate file.

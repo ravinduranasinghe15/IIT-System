@@ -53,7 +53,7 @@ export function ExceptionReview({ exception: e, movement }: { exception: Excepti
   const movementPending = !!movement?.pendingApproval;
 
   const reviewers = useMemo(
-    () => db.users.filter((u) => u.status === "Active" && ["Administrator", "Operations Manager", "Supervisor"].includes(u.role)),
+    () => db.users.filter((u) => u.status === "Active" && ["Manager", "Supervisor"].includes(u.role)),
     [db.users],
   );
 

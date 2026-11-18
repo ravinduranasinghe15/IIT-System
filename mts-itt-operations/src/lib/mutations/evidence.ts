@@ -105,6 +105,7 @@ export function linkDocument(db: DB, docId: string, movementId: string | null): 
     entityId: doc.id,
   });
   completeIfChitsSubmitted(db, movementId);
+  autoVerifyIfConfident(db, doc.id);
   return { ok: true, openExceptionIds: relatedMissingChitExceptions(db, movementId, doc.docType) };
 }
 
@@ -150,14 +151,45 @@ export function runExtraction(db: DB, docId: string): EvidenceDoc | null {
     description: `Simulated extraction (not real OCR) produced ${fields.length} field(s) for ${doc.id}; awaiting human verification.`,
     entityId: doc.id,
   });
+  autoVerifyIfConfident(db, doc.id);
   return doc;
 }
 
+export const AUTO_VERIFIER = "System (auto)";
+
+/** A chit's confidence score is its weakest field, so one doubtful field keeps it out of auto-verification. */
+export function chitConfidence(doc: EvidenceDoc): number | null {
+  const f = doc.ocr?.fields;
+  return f && f.length ? Math.min(...f.map((x) => x.confidence)) : null;
+}
+
+/**
+ * Loading / discharge chits and driver log sheets whose confidence score reaches the Settings threshold, are linked to a movement (logs: have their driver, lorry and shift filled in) and agree
+ * with its ledger are verified automatically. Everything else stays "Needs Verification" for a person.
+ */
+export function autoVerifyIfConfident(db: DB, docId: string): boolean {
+  const doc = db.documents.find((d) => d.id === docId);
+  if (!doc?.ocr || doc.ocr.verified) return false;
+  const isLog = doc.docType === "Driver Log Sheet";
+  if (!isLog && doc.docType !== "Loading Chit" && doc.docType !== "Discharge Chit") return false;
+  const m = doc.movementId ? db.movements.find((x) => x.id === doc.movementId) : null;
+  const score = chitConfidence(doc);
+  if (score === null || score < db.settings.ocrConfidenceThreshold) return false;
+  // a log sheet is matched by driver / lorry / shift (not one movement), so it needs its header details instead
+  if (isLog ? !doc.driverLog?.driverId || !doc.driverLog.primeMoverId : !m) return false;
+  for (const f of doc.ocr.fields) {
+    if (!m) break;
+    const ledger = ledgerValueFor(f.key, m, doc, db);
+    if (ledger !== null && ledger !== "" && f.value && !sameValue(f.value, ledger, f.key, db)) return false;
+  }
+  return verifyExtraction(db, docId, doc.ocr.fields, true).ok;
+}
+
 /** Human verification of (possibly corrected) extracted values. Never edits the movement. */
-export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { ok: boolean; corrected: number; differences: string[] } {
+export function verifyExtraction(db: DB, docId: string, fields: OcrField[], auto = false): { ok: boolean; corrected: number; differences: string[] } {
   const doc = db.documents.find((d) => d.id === docId);
   if (!doc?.ocr) return { ok: false, corrected: 0, differences: [] };
-  const actor = actorOf(db);
+  const actor = auto ? { ...actorOf(db), name: AUTO_VERIFIER } : actorOf(db);
   const now = nowOf(db);
   const original = doc.ocr.fields;
   const corrected = fields.filter((f) => {
@@ -176,7 +208,7 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { o
   doc.history.push({
     at: now,
     by: actor.name,
-    action: `Extraction verified by human${corrected.length ? ` (${corrected.length} field(s) corrected: ${corrected.map((c) => c.label).join(", ")})` : " (no corrections)"}`,
+    action: `${auto ? "Extraction auto-verified (confidence at or above threshold, matches ledger)" : "Extraction verified by human"}${corrected.length ? ` (${corrected.length} field(s) corrected: ${corrected.map((c) => c.label).join(", ")})` : " (no corrections)"}`,
   });
   // A verified discharge chit confirms delivery: an In Transit movement becomes Completed at the verified time.
   if (m && doc.docType === "Discharge Chit" && m.status === "In Transit") {
@@ -208,7 +240,7 @@ export function verifyExtraction(db: DB, docId: string, fields: OcrField[]): { o
     m.events.push(makeEvent(db, "document", `Verified ${doc.docType} ${doc.id} differs from the ledger – ${differences.join("; ")}. Review in the exception queue if needed.`));
   }
   logAudit(db, {
-    action: "Extraction Verified (human)",
+    action: auto ? "Extraction Auto-Verified" : "Extraction Verified (human)",
     module: "Evidence",
     description: `${doc.id} verified by ${actor.name}; ${corrected.length} correction(s)${differences.length ? `; ${differences.length} difference(s) vs ledger` : ""}.`,
     entityId: doc.id,

@@ -63,9 +63,9 @@ export function saveUser(db: DB, input: UserInput, editingId?: string): Mutation
   if (editingId) {
     const u = db.users.find((x) => x.id === editingId);
     if (!u) return fail("User not found.");
-    if ((input.status === "Disabled" || input.role !== "Administrator") && u.role === "Administrator" && u.status === "Active") {
-      const others = db.users.filter((x) => x.id !== u.id && x.role === "Administrator" && x.status === "Active").length;
-      if (!others) return fail("At least one active Administrator must remain.");
+    if ((input.status === "Disabled" || input.role !== "Manager") && u.role === "Manager" && u.status === "Active") {
+      const others = db.users.filter((x) => x.id !== u.id && x.role === "Manager" && x.status === "Active").length;
+      if (!others) return fail("At least one active Manager must remain.");
     }
     if (u.id === db.session.userId && input.status === "Disabled") return fail("You cannot disable the user you are currently signed in as.");
     const before = `${u.name} / ${u.role} / ${u.status}`;
@@ -87,7 +87,7 @@ export function setUserStatus(db: DB, id: string, status: AppUser["status"]): Mu
   if (!u) return fail("User not found.");
   if (status === "Disabled") {
     if (u.id === db.session.userId) return fail("You cannot disable the user you are currently signed in as.");
-    if (u.role === "Administrator" && !db.users.some((x) => x.id !== u.id && x.role === "Administrator" && x.status === "Active")) return fail("At least one active Administrator must remain.");
+    if (u.role === "Manager" && !db.users.some((x) => x.id !== u.id && x.role === "Manager" && x.status === "Active")) return fail("At least one active Manager must remain.");
   }
   u.status = status;
   logAudit(db, { action: status === "Disabled" ? "User Disabled" : "User Enabled", module: "Settings", entityId: id, description: `User ${u.name} (${u.role}) ${status === "Disabled" ? "disabled" : "enabled"}.` });

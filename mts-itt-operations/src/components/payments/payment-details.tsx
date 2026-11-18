@@ -197,12 +197,12 @@ export function PayRunDetail() {
       )}
       {draft && submitted && !can("payments.approve") && (
         <div className="mb-4 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-800">
-          Submitted – waiting for Administrator approval. You will see it approved here once the Administrator has reviewed it.
+          Submitted – waiting for Manager approval. You will see it approved here once the Manager has reviewed it.
         </div>
       )}
       {draft && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-amber-700">
-          Live draft – this pay run updates automatically as movements, exceptions and drivers change. Finance Managers submit it; only an Administrator can approve. Any change after submission requires re-submission.
+          Live draft – this pay run updates automatically as movements, exceptions and drivers change. The Manager submits it for approval and approves it. Any change after submission requires re-submission.
         </div>
       )}
 

@@ -121,7 +121,7 @@ export function InvoiceDetail() {
         <div className="rounded-xl border bg-card p-4 shadow-sm">
           <Stepper status={inv.status} />
           <p className="mt-3 text-xs text-slate">
-            {inv.status === "Draft" && "This invoice is a draft. It stays a draft until it is submitted and an authorised manager (Finance Manager or Administrator) approves it."}
+            {inv.status === "Draft" && "This invoice is a draft. It stays a draft until it is submitted and the Manager approves it."}
             {inv.status === "Pending Approval" && "Awaiting approval by an authorised manager. Approval is simulated and audit logged."}
             {inv.status === "Approved" && "Approved. Export the CSV for manual hand-off – there is no ERP posting in this demo."}
             {inv.status === "Exported" && "Exported as CSV for manual hand-off. There is no ERP posting in this demo."}

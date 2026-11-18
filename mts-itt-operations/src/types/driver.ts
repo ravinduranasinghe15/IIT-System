@@ -31,6 +31,10 @@ export interface RosterEntry {
   coveredBy?: string;
   /** Replacement driver: the absent driver whose shift this is */
   coveringFor?: string;
+  /** Why the driver is absent (reported by the supervisor) */
+  absentReason?: string;
+  absenceReportedBy?: string;
+  absenceReportedAt?: string;
 }
 
 /** A rostered shift that lost its driver (approved leave) and still needs someone assigned. */
@@ -43,6 +47,8 @@ export interface OpenShift {
   driverId: string;
   reason: string;
   createdAt: string;
+  /** Created by a supervisor reporting that the driver is not coming (the absent driver keeps the shift row until replaced) */
+  absence?: boolean;
 }
 
 export interface LeaveRecord {

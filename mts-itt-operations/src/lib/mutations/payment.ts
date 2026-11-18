@@ -133,7 +133,7 @@ export function submitPayRun(draft: DB, runId: string, note = ""): MutationResul
   });
   logAudit(draft, { action: "Pay Run Submitted", module: "Payments", entityId: run.id, description: `${run.id} submitted for approval.` });
   notify(draft, {
-    title: "Pay run awaiting Administrator approval",
+    title: "Pay run awaiting Manager approval",
     body: `${actor.name} submitted ${run.id} (${formatDate(run.periodStart)} - ${formatDate(run.periodEnd)}, ${formatMoney(round2(run.lines.reduce((s, l) => s + l.total, 0)), run.currency)}) for approval.`,
     level: "info",
     href: `/payments/${run.id}`,
@@ -144,7 +144,7 @@ export function submitPayRun(draft: DB, runId: string, note = ""): MutationResul
 /** Simulated approval - `payments.approve` only. An Approved run is immutable. */
 export function approvePayRun(draft: DB, runId: string, note = ""): MutationResult {
   const actor = actorOf(draft);
-  if (!can(actor.role, "payments.approve")) return { ok: false, error: "Only an Administrator can approve pay runs. Finance Managers submit them for approval." };
+  if (!can(actor.role, "payments.approve")) return { ok: false, error: "Only the Manager can approve pay runs." };
   const run = draft.payRuns.find((r) => r.id === runId);
   if (!run) return { ok: false, error: "Pay run not found." };
   if (run.status !== "Draft") return { ok: false, error: "This pay run is already approved." };
@@ -169,7 +169,7 @@ export function approvePayRun(draft: DB, runId: string, note = ""): MutationResu
 /** Reopen an Approved pay run as a Draft (with a reason). `payments.approve` only; it must be re-submitted and re-approved. */
 export function reopenPayRun(draft: DB, runId: string, reason: string): MutationResult {
   const actor = actorOf(draft);
-  if (!can(actor.role, "payments.approve")) return { ok: false, error: "Only an Administrator can reopen approved pay runs." };
+  if (!can(actor.role, "payments.approve")) return { ok: false, error: "Only a Manager can reopen approved pay runs." };
   const run = draft.payRuns.find((r) => r.id === runId);
   if (!run) return { ok: false, error: "Pay run not found." };
   if (run.status !== "Approved") return { ok: false, error: "Only Approved pay runs can be reopened." };
@@ -197,7 +197,7 @@ export interface PayRequest {
   total: number;
 }
 
-/** Pay runs that have been submitted for approval and are waiting for an Administrator. */
+/** Pay runs that have been submitted for approval and are waiting for a Manager. */
 export function pendingPayRequests(db: DB): PayRequest[] {
   const out: PayRequest[] = [];
   for (const run of db.payRuns) {

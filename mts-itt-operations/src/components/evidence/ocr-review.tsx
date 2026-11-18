@@ -143,7 +143,7 @@ export function OcrReview({ doc, canRun, canVerify }: { doc: EvidenceDoc; canRun
 
       {!ocr.verified && (
         <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!canVerify} onClick={() => setConfirmVerify(true)} title={canVerify ? undefined : "Only Administrator, Operations Manager or Supervisor can verify"}>
+          <Button disabled={!canVerify} onClick={() => setConfirmVerify(true)} title={canVerify ? undefined : "Only the Manager or a Supervisor can verify"}>
             <ShieldCheck /> Verify extraction{dirty ? " (with corrections)" : ""}
           </Button>
           <Button variant="outline" disabled={!dirty} onClick={() => setDraft(null)}>

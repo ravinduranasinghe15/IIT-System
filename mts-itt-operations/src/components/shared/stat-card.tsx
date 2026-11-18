@@ -52,8 +52,8 @@ export function StatCard({
         <div className="text-xs font-medium uppercase leading-tight tracking-wide text-slate">{label}</div>
         <div className="text-2xl font-semibold leading-tight text-ink">{value}</div>
         {hint && <div className="text-xs leading-tight text-slate">{hint}</div>}
+        {action && <div className="mt-2">{action}</div>}
       </div>
-      {action && <div className="ml-auto shrink-0">{action}</div>}
     </Comp>
   );
 }

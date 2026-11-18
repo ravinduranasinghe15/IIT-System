@@ -82,7 +82,7 @@ export function ChitSubmitDialog({
         const out = update((d) => batch.map((c) => ({ chit: c, ...submitDemoChit(d, c) })));
         setResults(out.map((o) => ({ docId: o.doc.id, chit: o.chit, movementId: o.movementId })));
         setPhase("results");
-        toast.success(`${out.length} chit(s) submitted`, { description: "Extracted values are ready for supervisor verification." });
+        toast.success(`${out.length} chit(s) submitted`, { description: `Chits at or above ${threshold}% confidence were verified automatically; the rest are waiting for manual verification.` });
       }, STAGES.length * STAGE_MS),
     );
   };
@@ -160,7 +160,7 @@ export function ChitSubmitDialog({
       {phase === "results" && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-            <CheckCircle2 className="size-4" /> {results.length} chit(s) linked to movements. Open each one to verify the extracted values.
+            <CheckCircle2 className="size-4" /> {results.length} chit(s) linked to movements. Chits at or above {threshold}% confidence are verified automatically; review the others manually.
           </div>
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
@@ -168,7 +168,8 @@ export function ChitSubmitDialog({
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-slate">
                   <th className="px-3 py-2 font-medium">Chit</th>
                   <th className="px-3 py-2 font-medium">Movement</th>
-                  <th className="px-3 py-2 font-medium">Low-confidence fields</th>
+                  <th className="px-3 py-2 font-medium">Confidence</th>
+                  <th className="px-3 py-2 font-medium">Verification</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -189,7 +190,13 @@ export function ChitSubmitDialog({
                       <td className="px-3 py-2">
                         {r.movementId ? <Link href={`/movements/${r.movementId}`} className="font-medium text-brand hover:underline">{r.movementId}</Link> : <span className="text-danger">Not matched</span>}
                       </td>
-                      <td className="px-3 py-2">{n > 0 ? <span className="font-medium text-warning">{n} to check</span> : <span className="text-slate">None</span>}</td>
+                      <td className="px-3 py-2">
+                        {Math.min(...r.chit.fields.map((f) => f.confidence))}%
+                        {n > 0 && <span className="ml-1 text-xs text-warning">({n} low)</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        {db.documents.find((x) => x.id === r.docId)?.ocr?.verified ? <span className="font-medium text-success">Auto-verified</span> : <span className="font-medium text-warning">Manual check needed</span>}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <Button
                           size="xs"

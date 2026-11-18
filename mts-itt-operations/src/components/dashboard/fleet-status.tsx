@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLookups } from "@/hooks/use-lookups";
 import type { FleetRow } from "@/lib/stats";
+import { ScrollX } from "@/components/shared/scroll-x";
 
 export function FleetStatus({ rows }: { rows: FleetRow[] }) {
   const lk = useLookups();
@@ -22,7 +23,7 @@ export function FleetStatus({ rows }: { rows: FleetRow[] }) {
         </Button>
       }
     >
-      <div className="scroll-thin overflow-x-auto">
+      <ScrollX>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/60 hover:bg-muted/60">
@@ -52,7 +53,7 @@ export function FleetStatus({ rows }: { rows: FleetRow[] }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </ScrollX>
     </SectionCard>
   );
 }

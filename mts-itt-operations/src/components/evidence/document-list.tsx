@@ -10,7 +10,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useApp } from "@/contexts/app-context";
 import { formatDateTime } from "@/lib/date-utils";
-import { DOC_TYPES, type EvidenceDoc } from "@/types/evidence";
+import { DOC_TYPES, type DocType, type EvidenceDoc } from "@/types/evidence";
 import { movementsCovered } from "@/lib/driver-logs";
 import { ocrState } from "./document-detail";
 import { LogCoverage } from "./log-coverage";
@@ -30,12 +30,17 @@ export function DocumentList({
   filters,
   onFilters,
   fixedMovementId,
+  typeOptions = DOC_TYPES,
+  emptyHint = "Upload a chit or supporting document to get started.",
 }: {
   docs: EvidenceDoc[];
   onOpen: (doc: EvidenceDoc) => void;
   filters: DocFilters;
   onFilters: (f: DocFilters) => void;
   fixedMovementId?: string;
+  /** Types offered in the type filter (a single entry hides the filter) */
+  typeOptions?: readonly DocType[];
+  emptyHint?: string;
 }) {
   const { db } = useApp();
   const uploaders = useMemo(() => Array.from(new Set(db.documents.map((d) => d.uploadedBy))).sort(), [db.documents]);
@@ -54,6 +59,12 @@ export function DocumentList({
     });
   }, [docs, filters]);
 
+  /** Driver of the linked movement (chits) or the driver named on the log sheet. */
+  const driverNameOf = (d: EvidenceDoc): string | null => {
+    const id = d.driverLog?.driverId ?? db.movements.find((m) => m.id === d.movementId)?.driverId ?? null;
+    return id ? (db.drivers.find((x) => x.id === id)?.name ?? id) : null;
+  };
+
   const columns: Column<EvidenceDoc>[] = [
     { key: "id", header: "Doc ID", sortValue: (d) => d.id, cell: (d) => <span className="font-semibold text-brand">{d.id}</span> },
     {
@@ -68,6 +79,15 @@ export function DocumentList({
       ),
     },
     { key: "type", header: "Type", sortValue: (d) => d.docType, cell: (d) => <span className="whitespace-nowrap">{d.docType}</span> },
+    {
+      key: "driver",
+      header: "Driver",
+      sortValue: (d) => driverNameOf(d) ?? "~",
+      cell: (d) => {
+        const n = driverNameOf(d);
+        return n ? <span className="whitespace-nowrap">{n}</span> : <span className="text-slate-400">—</span>;
+      },
+    },
     { key: "at", header: "Uploaded", sortValue: (d) => d.uploadedAt, cell: (d) => <span className="whitespace-nowrap">{formatDateTime(d.uploadedAt)}</span> },
     { key: "by", header: "Uploaded by", sortValue: (d) => d.uploadedBy, cell: (d) => <span className="whitespace-nowrap">{d.uploadedBy}</span> },
     {
@@ -104,7 +124,7 @@ export function DocumentList({
     <div>
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2.5">
         <SearchInput value={filters.q} onChange={(q) => set({ q })} placeholder="Search doc ID, file, movement…" className="w-64 max-w-full" />
-        <NativeSelect className="w-40" value={filters.type} onValueChange={(type) => set({ type })} placeholder="All types" options={DOC_TYPES} aria-label="Document type" />
+        {typeOptions.length > 1 && <NativeSelect className="w-40" value={filters.type} onValueChange={(type) => set({ type })} placeholder="All types" options={typeOptions} aria-label="Document type" />}
         {!fixedMovementId && (
           <NativeSelect
             className="w-36"
@@ -125,9 +145,9 @@ export function DocumentList({
         rows={rows}
         getRowId={(d) => d.id}
         onRowClick={onOpen}
-        initialSort={{ key: "at", dir: "desc" }}
+        initialSort={{ key: "id", dir: "asc" }}
         emptyTitle="No documents found"
-        emptyDescription={docs.length ? "No document matches the current filters." : "Upload a chit or supporting document to get started."}
+        emptyDescription={docs.length ? "No document matches the current filters." : emptyHint}
       />
     </div>
   );
