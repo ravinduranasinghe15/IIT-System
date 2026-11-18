@@ -7,7 +7,7 @@ import { DEFAULT_MAPPINGS } from "./mock-imports";
 import { buildRates } from "./mock-invoices";
 import { realToday } from "@/lib/date-utils";
 
-export const DB_VERSION = 20;
+export const DB_VERSION = 21;
 
 export const DEFAULT_SETTINGS: Settings = {
   timezone: DEFAULT_TIMEZONE,

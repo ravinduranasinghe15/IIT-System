@@ -1,7 +1,7 @@
 import type { DB } from "@/types/db";
 import type { RosterEntry } from "@/types/driver";
 import { addDays, eachDay, formatDay, realToday } from "./date-utils";
-import { WORK_SHIFTS, breaksWeeklyOff, getterFor, restConflict, type WorkShift } from "./roster-rules";
+import { WORK_SHIFTS, breaksWeeklyOff, isWorkShift, restConflict, type EntryGetter, type WorkShift } from "./roster-rules";
 
 /**
  * Manager-driven roster generation. The Manager says how many trucks run on each shift (the same for the whole week, or
@@ -81,11 +81,30 @@ export function generateRoster(db: DB, plan: RosterPlan, today = realToday()): G
     }
     work.push(r);
   }
+  // index of the working copy by driver and date (fast neighbour look-ups for the rest / weekly-off rules)
+  const idx = new Map<string, RosterEntry>();
+  for (const r of work) idx.set(`${r.driverId}|${r.date}`, r);
   const added: Omit<RosterEntry, "id">[] = [];
   const push = (e: Omit<RosterEntry, "id">) => {
     added.push(e);
-    work.push({ id: `NEW-${added.length}`, ...e });
+    const entry = { id: `NEW-${added.length}`, ...e };
+    work.push(entry);
+    idx.set(`${e.driverId}|${e.date}`, entry);
   };
+  const getter = (id: string): EntryGetter => (date) => idx.get(`${id}|${date}`);
+  /** Shifts a driver already works in the 6 days before `date` (spreads the days off) */
+  const recentLoad = (id: string, date: string) => {
+    let n = 0;
+    for (let k = 1; k <= 6; k++) if (isWorkShift(idx.get(`${id}|${addDays(date, -k)}`)?.shift ?? "Off")) n++;
+    return n;
+  };
+  // weekly rotation: a driver works Morning one week and Night the next. His "week" starts the day after his usual day off,
+  // so a driver switching from Night to Morning has had a rest day in between (the rest rule forbids Night -> Morning next day).
+  const order0 = new Map(db.drivers.map((d, i) => [d.id, i]));
+  const dayNum = (date: string) => Math.floor(Date.parse(`${date}T00:00:00Z`) / 86400000);
+  // every driver has a usual weekly day off (spread over the week) that is only given up when somebody is needed
+  const usualOff = (id: string, date: string) => (dayNum(date) + (order0.get(id) ?? 0)) % 7 === 6;
+  const preferred = (id: string, date: string): WorkShift => ((Math.floor((dayNum(date) + (order0.get(id) ?? 0) + 1) / 7) + (order0.get(id) ?? 0)) % 2 === 0 ? "Morning" : "Night");
 
   const trucks = db.primeMovers.filter((p) => p.status === "Active" && !plan.excludedTrucks.includes(p.id)).map((p) => p.id);
   const drivers = db.drivers.filter((d) => d.status === "Active");
@@ -119,7 +138,7 @@ export function generateRoster(db: DB, plan: RosterPlan, today = realToday()): G
     // any rested driver can drive any truck: drivers are not tied to a truck
     const available = (shift: WorkShift) =>
       drivers.filter((d) => !busy.has(d.id)).filter((d) => {
-        const get = getterFor(work, d.id);
+        const get = getter(d.id);
         return !restConflict(get, date, shift) && !breaksWeeklyOff(get, date);
       });
 
@@ -136,12 +155,15 @@ export function generateRoster(db: DB, plan: RosterPlan, today = realToday()): G
       }
       // trucks used least first so the work is spread over the fleet
       const truck = [...options].sort((a, b) => (usage.get(a) ?? 0) - (usage.get(b) ?? 0) || a.localeCompare(b))[0];
-      const prev = (id: string) => work.find((r) => r.driverId === id && r.date === addDays(date, -1));
-      // keep a driver on the truck and shift he had yesterday, then on the same shift, then whoever has worked least
+      const prev = (id: string) => idx.get(`${id}|${addDays(date, -1)}`);
+      // drivers who are not on their usual day off first, then the driver whose week it is for this shift, then the one who had this truck yesterday, then the one who has
+      // worked the fewest of the last 6 days (so days off are spread), then whoever has worked least in the period
       const driver = [...free].sort(
         (a, b) =>
+          Number(usualOff(a.id, date)) - Number(usualOff(b.id, date)) ||
+          Number(preferred(a.id, date) !== shift) - Number(preferred(b.id, date) !== shift) ||
           Number(prev(b.id)?.primeMoverId === truck) - Number(prev(a.id)?.primeMoverId === truck) ||
-          Number(prev(b.id)?.shift === shift) - Number(prev(a.id)?.shift === shift) ||
+          recentLoad(a.id, date) - recentLoad(b.id, date) ||
           (worked.get(a.id) ?? 0) - (worked.get(b.id) ?? 0) ||
           a.id.localeCompare(b.id),
       )[0];
@@ -156,7 +178,7 @@ export function generateRoster(db: DB, plan: RosterPlan, today = realToday()): G
 
     // everybody else is off that day (leave entries stay as they are)
     for (const d of drivers) {
-      if (!work.some((r) => r.driverId === d.id && r.date === date)) push({ driverId: d.id, date, shift: "Off", primeMoverId: null, attendance: "Scheduled" });
+      if (!idx.has(`${d.id}|${date}`)) push({ driverId: d.id, date, shift: "Off", primeMoverId: null, attendance: "Scheduled" });
     }
 
     for (const s of WORK_SHIFTS) {

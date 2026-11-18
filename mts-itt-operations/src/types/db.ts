@@ -25,7 +25,7 @@ export interface Settings {
   payRejected: boolean;
   payDamaged: boolean;
   requireManagerApproval: boolean;
-  /** Unconfirmed in the proposal (9 prime movers / 14 drivers / "3 drivers per truck") */
+  /** Unconfirmed in the proposal (9 prime movers / 20 drivers / "3 drivers per truck") */
   driversPerTruck: number | null;
   fuelVarianceThresholdPct: number;
   ocrConfidenceThreshold: number;

@@ -319,6 +319,7 @@ const addTrip = (day, time, container, size, from, to, truck) => {
 cwitAll.forEach(([day, time, container, size, dest, truck]) => addTrip(day, time, container, size, "CWIT", dest, truck));
 sagtAll.forEach(([day, time, container, size, dest, truck]) => addTrip(day, time, container, size, "SAGT", dest, truck));
 const FORCED = new Set(["2026-11-13|Morning|LY-5516", "2026-11-13|Morning|LY-5519", "2026-11-13|Morning|LY-6181"]); // the chit-pack trucks
+const FORCED_SPARE = new Set(["2026-11-13|Morning|LY-6178"]); // the demo closes this missing log by hand (MV-0302 + MV-0541)
 const demoKey = `${LOG.date}|${LOG.shift}|LY-5525`; // already covered by the single demo log above
 const driverName = (id) => MOCK_DRIVERS.find((d) => d.id === id)?.name ?? id;
 const logRows = [];
@@ -334,7 +335,8 @@ for (const [key, g] of [...groups.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 
   }
   driverOfGroup.set(key, driverId);
   if (key === demoKey) continue;
-  const spare = !FORCED.has(key) && rng() < 0.1; // "spare" sheets are not in the submit-all pack: they are the ones a supervisor uploads by hand to close a missing log
+  const spareRoll = rng();
+  const spare = FORCED_SPARE.has(key) || (!FORCED.has(key) && spareRoll < 0.1); // "spare" sheets are not in the submit-all pack: they are the ones a supervisor uploads by hand to close a missing log
   const file = `LOG-${g.opDay}-${g.shift}-${g.plate.replace("-", "")}.png`;
   const L = { file, driver: driverName(driverId), lorry: g.plate.replace("-", " "), shift: g.shift, date: g.opDay, trips: g.trips };
   await sharp(Buffer.from(logSvg(L))).png({ palette: true }).toFile(path.join(logDir, file));

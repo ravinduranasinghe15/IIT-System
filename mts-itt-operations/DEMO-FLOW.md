@@ -13,19 +13,20 @@ follow the steps **in this order on freshly reset data**.
 3. Role switcher (header): CEO · Manager · Supervisor · Driver. Supervisor and Driver show a phone-sized view on a desktop.
 4. Facts to mention: two 12-hour shifts (Morning 7a–7p, Night 7p–7a); the operational day runs 07:00 → 07:00; "today" in the demo is **13 Nov 2026**.
    Drivers are **not tied to a truck**: the terminal reports name only the truck, so the driver comes from the roster and is corrected by a verified driver log.
+   There are **20 drivers** and 8 active trucks (PM-006 is in maintenance). **Every active truck runs both shifts every day** (16 driver-shifts a day), which needs about 19–20 drivers under the rules (12-hour shift, one shift a day, 8 h rest, a day off in every 7).
 
 ## 1. Manager – import the two terminal reports
 **Terminal Imports → New terminal import**
-1. Click **CWIT sample report** → *Import report*. Result: **306 movements**, 8 exceptions.
-2. Back to *New terminal import* → **SAGT sample report** → *Import report*. Result: **238 movements**, 5 exceptions.
+1. Click **CWIT sample report** → *Import report*. Result: **306 movements**, 2 exceptions.
+2. Back to *New terminal import* → **SAGT sample report** → *Import report*. Result: **238 movements**, 0 exceptions.
 3. Try the same file again → it is rejected as a **duplicate file**.
-4. Open **Movements**: 544 movements from **13 Oct to 13 Nov**, sorted by ID. Almost every row already has a **driver** (taken from the roster for that truck and shift); the movement page says "from roster". The status is *In Transit* – nothing is billable yet.
-5. **Exceptions**: 13 raised by the imports. Show **MV-0306** (truck LY5999 is not in the fleet → *Truck Number Mismatch*). Billing stays blocked until an exception is resolved.
+4. Open **Movements**: 544 movements from **13 Oct to 13 Nov**, sorted by ID. Every row on a fleet truck already has a **driver** (543 of 544, taken from the roster for that truck and shift); the movement page says "from roster". The status is *In Transit* – nothing is billable yet.
+5. **Exceptions**: 2 raised, both on **MV-0306** (truck LY5999 is not in the fleet → *Truck Number Mismatch*, and so no driver). Billing stays blocked until an exception is resolved.
 
 ## 2. Supervisor – submit the chits
 Switch to **Supervisor** → **Chits & Evidence** (chits and driver logs are separate sections) → **Submit chits**.
 1. Choose **use the full chit pack (180 chits, 9 – 13 Nov)** → *Submit 180 chits*.
-2. Result: **134 chits verified automatically**, **46 wait for a person**. **90 movements become Completed** (both chits are in).
+2. Result: **143 chits verified automatically**, **37 wait for a person**. **90 movements become Completed** (both chits are in).
 3. Explain the rule (Settings → *OCR confidence threshold*, 80%): a chit is verified by the system only if
    its confidence is at or above the threshold **and** it passes the **cross-check**:
    container, truck, terminal and time (±30 min) against the terminal data, the driver against the roster/movement and any driver log, and a discharge never before its loading.
@@ -34,14 +35,14 @@ Switch to **Supervisor** → **Chits & Evidence** (chits and driver logs are sep
 
 ## 3. Supervisor – submit the driver logs
 **Driver Logs → Upload driver log**
-1. Choose **submit the demo log pack (218 sheets, 13 Oct – 13 Nov)**.
-2. Result: **190 sheets verified automatically, 28 wait for a person**; **500 movements are now covered**, **44 still have no log**.
+1. Choose **submit the demo log pack (295 sheets, 13 Oct – 13 Nov)**.
+2. Result: **256 sheets verified automatically, 39 wait for a person**; **499 movements are now covered**, **45 still have no log**.
 3. A sheet is verified automatically only if it is confident **and** the cross-check passes: its driver is the roster driver, every container on the sheet is a covered movement (and every covered container is on the sheet), and it agrees with the chits.
 4. When a log is verified it sets the **real driver** on the movements it covers; the "Driver Information Missing" exception closes itself.
 5. Open any verified sheet → the **Ledger value** column compares each field with the terminal data / roster.
 
 ## 4. Where things stand now (all movements)
-Billable **46** · Pending Chits **32** · Pending Driver Log **12** · Blocked – Exception **1** · Pending Completion **453** (not yet completed – no chits submitted for them).
+Billable **43** · Pending Chits **32** · Pending Driver Log **15** · Blocked – Exception **1** · Pending Completion **453** (not yet completed – no chits submitted for them).
 
 Look at **13 Nov** in *Movements* (filter loading date). Open **MV-0297** → **Billing readiness** shows the whole checklist:
 movement completed → loading chit verified (by *System (auto)*) → discharge chit verified → driver log verified → **cross-check passed** → no open exceptions → **Billable**.
@@ -51,23 +52,23 @@ movement completed → loading chit verified (by *System (auto)*) → discharge 
 
 | Document | Movement | Why it was not verified | What to do |
 |---|---|---|---|
-| DOC-0003 `LC-MRSU3411064` | MV-0298 | driver misread, 64% confidence | change driver to **Kasun Fernando**, verify → **MV-0298 becomes Billable** |
-| DOC-0173 `LC-HASU5167002` | MV-0543 | driver misread, low confidence | correct the name (Ruwan Wickramasinghe), verify |
-| DOC-0180 `DC-CSNU7582937` | MV-0303 | driver misread, low confidence | correct the name (Lakmal Gunawardena), verify |
-| DOC-0176 `DC-MSKU1783797` | MV-0302 | **discharge time 07:52 is before the loading time 09:10** | fix the time (e.g. 10:20), verify |
-| DOC-0172 `DC-TCKU6766864` | MV-0539 | **terminal** CICT vs JCT | read the original, set JCT, verify |
-| DOC-0163 `LC-MRKU9895596` | MV-0538 | **terminal** CICT vs SAGT | read the original, set SAGT, verify |
-| DOC-0167 `LC-MRKU5758110` | MV-0540 | **driver** on the chit is Pradeep Kumara, roster has Thushara Madushanka | compare with the driver log of LY-5520 (DOC-0396), decide who is right, verify |
-| DOC-0396 `LOG-2026-11-13-Morning-LY5520` (driver log) | MV-0299, MV-0540 | read with low confidence, and it disagrees with chit DOC-0167 | open, check the driver, verify |
+| DOC-0003 `LC-MRSU3411064` | MV-0298 | driver misread as "Kasun Fernado", 64% confidence | change driver to **Kasun Fernando**, verify → **MV-0298 becomes Billable** |
+| DOC-0174 `DC-HASU5167002` | MV-0543 | driver misread ("Ruwan Wickramasinge"), low confidence | correct the name (Ruwan Wickramasinghe), verify |
+| DOC-0156 `DC-OOCU7036710` | MV-0542 | **discharge time 13:40 is before the loading time 14:20** | fix the time (e.g. 15:10), verify |
+| DOC-0160 `DC-TXGU7963720` | MV-0305 | **terminal** CICT vs JCT | read the original, set JCT, verify |
+| DOC-0163 `LC-MRKU9895596` | MV-0538 | **terminal** CWIT vs SAGT | read the original, set SAGT, verify |
+| DOC-0167 `LC-MRKU5758110` | MV-0540 | **truck** on the chit is LY-6178, the movement is LY-5520 | correct to LY-5520, verify |
+| DOC-0168 `DC-MRKU5758110` | MV-0540 | **driver** on the chit is Isuru Senanayake, roster has Nimal Herath | compare with the driver log of LY-5520 (DOC-0473), decide who is right, verify |
+| DOC-0473 `LOG-2026-11-13-Morning-LY5520` (driver log) | MV-0299, MV-0540 | it names Nimal Herath, which disagrees with chit DOC-0168 | open, check the driver, verify (MV-0299 becomes Billable) |
 
 Points to make: verifying a document yourself counts as the **review** of its mismatches. If you verify a chit whose container number
-differs from the terminal data, the system raises a *Container Number Mismatch* exception and blocks billing (try this on the chits of MV-0524 – `DC-MRSU1005873`).
+differs from the terminal data, the system raises a *Container Number Mismatch* exception and blocks billing (try this on `DC-UETU1002951`, the discharge chit of MV-0256).
 
 ## 6. Close a missing driver log
-**Driver Logs → Missing driver logs** lists the 44 movements with no sheet. For **LY-6178, 13 Nov, Morning** (MV-0302 and MV-0541):
+**Driver Logs → Missing driver logs** lists the 45 movements with no sheet. For **LY-6178, 13 Nov, Morning** (MV-0302 and MV-0541):
 1. Click **Upload** on the row (lorry, date, shift are pre-filled).
 2. Choose the file `public/documents/driver-logs/LOG-2026-11-13-Morning-LY6178.png` – the form fills itself from the file name.
-3. Upload → verified automatically → **MV-0541 becomes Billable** (MV-0302 follows once its DOC-0176 is corrected, step 5).
+3. Upload → verified automatically → **MV-0302 and MV-0541 become Billable** (both already have verified chits).
 
 ## 7. Show that the cross-check also protects after the fact
 Manager → **MV-0297** → **Edit** → change the prime mover to **PM-002** → save. The status changes to **Blocked – Mismatch** and *Billing readiness* lists the conflicts between the chits, the driver log and the movement. Change it back to **PM-001** → Billable again.
@@ -84,8 +85,8 @@ Manager → **MV-0297** → **Edit** → change the prime mover to **PM-002** �
 4. **Fleet → PM-001 → Fuel & maintenance spend**: last fuel pumped, maintenance history, spend per month and per trip.
 
 ## 10. Roster (Manager and Supervisor)
-1. **Drivers & Roster**: grid and calendar views, two shifts, one driver per truck per shift.
-2. Manager → **Generate roster**: choose next week, set trucks per shift (whole week, then date-wise), look at the preview and **Publish**.
+1. **Drivers & Roster**: grid and calendar views, two shifts, one driver per truck per shift. The default roster has **all 8 active trucks on both shifts every day** with 20 drivers; the tiles show "8 of 8 trucks" for Morning and Night.
+2. Manager → **Generate roster**: choose next week, set **8 trucks on Morning and 8 on Night** (whole week, then date-wise), look at the preview (**112 of 112 truck-shifts covered**) and **Publish**.
 3. Supervisor → **Driver not coming** (reason) → the Manager gets a notification and an open shift → Manager **Assign driver**.
 
 ## 11. Reports, CEO and the assistant

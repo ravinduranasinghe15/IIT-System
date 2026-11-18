@@ -227,7 +227,7 @@ export function SettingsView() {
               </Field>
             </div>
             <Assumption>
-              Staffing (9 prime movers / 14 drivers / “3 drivers per truck”) is unconfirmed and never enforced. Extraction is simulated and always needs human verification.
+              Staffing (9 prime movers / 20 drivers / “3 drivers per truck”) is unconfirmed and never enforced. Extraction is simulated and always needs human verification.
             </Assumption>
           </div>
         </SectionCard>
