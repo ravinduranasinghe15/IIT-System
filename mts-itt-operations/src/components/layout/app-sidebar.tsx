@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, Ship } from "lucide-react";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { MtsLogo } from "@/components/shared/mts-logo";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth-context";
@@ -30,9 +31,7 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className={cn("flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4", collapsed && "justify-center px-2")}>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success text-white">
-          <Ship className="size-5" />
-        </div>
+        <MtsLogo className="size-10" />
         {!collapsed && (
           <div className="min-w-0 leading-tight">
             <div className="truncate text-sm font-semibold text-white">MTS ITT Operations</div>

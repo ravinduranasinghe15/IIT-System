@@ -18,9 +18,69 @@ import { AbsenceDialog } from "./absence-dialog";
 import { RosterGeneratorDialog } from "./roster-generator-dialog";
 import { LeavePanel, LeaveRequestDialog } from "./leave-dialogs";
 import { AssignDriverDialog, type AssignTarget } from "./assign-driver-dialog";
-import { Rows3 } from "lucide-react";
+import { Rows3, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { SHIFT_HOURS, checkRosterRules, type WorkShift } from "@/lib/roster-rules";
 import { StatusBadge } from "@/components/shared/status-badge";
+
+const TILE_TONE = {
+  amber: { box: "border-amber-200/70 bg-gradient-to-br from-amber-50 to-card", icon: "bg-amber-100 text-amber-700", bar: "bg-amber-400" },
+  indigo: { box: "border-indigo-200/70 bg-gradient-to-br from-indigo-50 to-card", icon: "bg-indigo-100 text-indigo-700", bar: "bg-indigo-400" },
+  red: { box: "border-red-200 bg-gradient-to-br from-red-50 to-card", icon: "bg-red-100 text-red-700", bar: "bg-red-400" },
+  violet: { box: "border-violet-200 bg-gradient-to-br from-violet-50 to-card", icon: "bg-violet-100 text-violet-700", bar: "bg-violet-400" },
+  slate: { box: "bg-card", icon: "bg-muted text-slate", bar: "bg-slate-300" },
+} as const;
+
+/** One "today" figure: icon, big number, caption and (for the shifts) how many of the trucks are covered. */
+function OverviewTile({ icon: Icon, label, hint, value, of, tone }: { icon: LucideIcon; label: string; hint: string; value: number; of?: number; tone: keyof typeof TILE_TONE }) {
+  const t = TILE_TONE[tone];
+  const pct = of ? Math.min(100, Math.round((value / of) * 100)) : 0;
+  return (
+    <div className={cn("rounded-2xl border p-3.5 shadow-sm", t.box)}>
+      <div className="flex items-start gap-3">
+        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", t.icon)}>
+          <Icon className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-slate">{label}</div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-semibold leading-tight tabular-nums text-ink">{value}</span>
+            {of !== undefined && <span className="whitespace-nowrap text-xs text-slate">of {of} trucks</span>}
+          </div>
+          <div className="text-[11px] leading-snug text-slate">{hint}</div>
+        </div>
+      </div>
+      {of !== undefined && (
+        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/5" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${label} trucks covered`}>
+          <div className={cn("h-full rounded-full transition-all", t.bar)} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Small segmented control. */
+function Segmented({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string; icon?: LucideIcon }[] }) {
+  return (
+    <div className="inline-flex rounded-lg border bg-muted/50 p-0.5 text-xs" role="group">
+      {options.map((o) => {
+        const Icon = o.icon;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+            className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 font-medium transition", value === o.value ? "bg-card text-navy shadow-sm" : "text-slate hover:text-ink")}
+          >
+            {Icon && <Icon className="size-3.5" />}
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function RosterView() {
   const { db } = useApp();
@@ -72,6 +132,7 @@ export function RosterView() {
   const nightToday = todayRows.filter((r) => r.shift === "Night" && r.attendance !== "Absent").length;
   const absentToday = todayRows.filter((r) => r.attendance === "Absent").length;
   const pendingLeave = db.leaves.filter((l) => l.status === "Pending").length;
+  const activeTrucks = db.primeMovers.filter((p) => p.status === "Active").length;
 
   const ruleChecks = useMemo(() => checkRosterRules(drivers, db.roster, start, end), [drivers, db.roster, start, end]);
   const openShifts = [...db.openShifts].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -148,7 +209,7 @@ export function RosterView() {
               </Button>
             )}
             {canAttend && (
-              <Button variant="destructive" onClick={() => setAbsenceOpen(true)}>
+              <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => setAbsenceOpen(true)}>
                 <BellRing /> Driver not coming
               </Button>
             )}
@@ -157,39 +218,20 @@ export function RosterView() {
                 <CalendarCheck /> Record attendance
               </Button>
             )}
-            <Button onClick={() => setLeaveOpen(true)}>Request leave</Button>
+            <Button variant="outline" onClick={() => setLeaveOpen(true)}>Request leave</Button>
           </>
         }
       />
 
-      {/* Today at a glance + what the shifts mean */}
-      <div className="mb-4 grid grid-cols-6 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
-        {([
-          { k: "Morning", n: morningToday, icon: Sun, cls: "bg-sky-50 text-sky-900 ring-sky-200" },
-          { k: "Night", n: nightToday, icon: Moon, cls: "bg-slate-800 text-white ring-slate-900/30" },
-        ] as const).map(({ k, n, icon: Icon, cls }) => (
-          <div key={k} className={`col-span-3 flex flex-col items-start gap-1 rounded-xl p-2.5 ring-1 ring-inset sm:col-span-1 sm:flex-row sm:items-center sm:gap-3 sm:p-3 ${cls}`}>
-            <Icon className="size-5 shrink-0" />
-            <div className="min-w-0">
-              <div className="text-2xl font-semibold leading-none tabular-nums">{n}</div>
-              <div className="mt-1 text-xs font-medium">{k}<span className="hidden sm:inline"> · {SHIFT_HOURS[k].range}</span></div>
-            </div>
-          </div>
-        ))}
-        <div className="col-span-3 flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border sm:col-span-1">
-          <UserRoundX className={`size-5 shrink-0 ${absentToday ? "text-danger" : "text-slate"}`} />
-          <div>
-            <div className="text-2xl font-semibold leading-none tabular-nums text-ink">{absentToday}</div>
-            <div className="mt-1 text-xs text-slate">Absent today</div>
-          </div>
-        </div>
-        <div className="col-span-3 flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-inset ring-border sm:col-span-1">
-          <UserRoundCheck className={`size-5 shrink-0 ${pendingLeave ? "text-warning" : "text-slate"}`} />
-          <div>
-            <div className="text-2xl font-semibold leading-none tabular-nums text-ink">{pendingLeave}</div>
-            <div className="mt-1 text-xs text-slate">Leave requests waiting</div>
-          </div>
-        </div>
+      {/* Today at a glance */}
+      <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-slate">
+        <span className="inline-flex size-1.5 rounded-full bg-brand" /> Today · {formatDay(today, "EEEE, dd MMMM yyyy")}
+      </div>
+      <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <OverviewTile icon={Sun} label="Morning shift" hint={SHIFT_HOURS.Morning.range} value={morningToday} of={activeTrucks} tone="amber" />
+        <OverviewTile icon={Moon} label="Night shift" hint={SHIFT_HOURS.Night.range} value={nightToday} of={activeTrucks} tone="indigo" />
+        <OverviewTile icon={UserRoundX} label="Absent today" hint={absentToday ? "Replacement needed" : "Everyone is in"} value={absentToday} tone={absentToday ? "red" : "slate"} />
+        <OverviewTile icon={UserRoundCheck} label="Leave requests" hint={pendingLeave ? "Waiting for a decision" : "Nothing waiting"} value={pendingLeave} tone={pendingLeave ? "violet" : "slate"} />
       </div>
 
       {openShifts.length > 0 && (
@@ -214,28 +256,21 @@ export function RosterView() {
         </SectionCard>
       )}
 
-      <SectionCard
-        title={view === "calendar" ? formatDay(month, "MMMM yyyy") : `${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM yyyy")}`}
-        description={canEdit || canAttend ? "Click a cell to change the shift, record attendance or replace a driver." : "Read-only view."}
-        bodyClassName="p-0"
-        actions={
-          <>
-            <SearchInput value={q} onChange={setQ} placeholder="Find driver…" className="hidden w-40 sm:block" />
-            <div className="flex overflow-hidden rounded-lg border text-xs">
-              {([["grid", "Grid", Rows3], ["calendar", "Calendar", CalendarDays]] as const).map(([k, label, Icon]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setView(k)}
-                  aria-pressed={view === k}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 font-medium ${view === k ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted"}`}
-                >
-                  <Icon className="size-3.5" /> {label}
-                </button>
-              ))}
-            </div>
+      <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b px-4 py-3.5">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-navy">{view === "calendar" ? formatDay(month, "MMMM yyyy") : `${formatDay(start, "dd MMM")} – ${formatDay(end, "dd MMM yyyy")}`}</h2>
+            <p className="text-xs text-slate">{canEdit || canAttend ? "Click a cell to change the shift, record attendance or replace a driver." : "Read-only view."}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchInput value={q} onChange={setQ} placeholder="Find driver…" className="w-44" />
+            <Segmented
+              value={view}
+              onChange={(v) => setView(v as "grid" | "calendar")}
+              options={[{ value: "grid", label: "Grid", icon: Rows3 }, { value: "calendar", label: "Calendar", icon: CalendarDays }]}
+            />
             {view === "calendar" ? (
-              <>
+              <div className="flex items-center gap-1">
                 <Button variant="outline" size="icon-sm" aria-label="Previous month" onClick={() => setMonth(addMonths(month, -1))}>
                   <ChevronLeft />
                 </Button>
@@ -245,38 +280,28 @@ export function RosterView() {
                 <Button variant="outline" size="icon-sm" aria-label="Next month" onClick={() => setMonth(addMonths(month, 1))}>
                   <ChevronRight />
                 </Button>
-              </>
+              </div>
             ) : (
               <>
-            <div className="flex overflow-hidden rounded-lg border text-xs">
-              {[7, 14].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setRange(start, addDays(start, d - 1))}
-                  className={`px-2.5 py-1.5 font-medium ${span === d ? "bg-navy text-white" : "bg-card text-slate hover:bg-muted"}`}
-                >
-                  {d} days
-                </button>
-              ))}
-            </div>
-            <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => shift(-1)}>
-              <ChevronLeft />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setRange(today, addDays(today, span - 1))} disabled={isDefaultRange}>
-              Today
-            </Button>
-            <Button variant="outline" size="icon-sm" aria-label="Next period" onClick={() => shift(1)}>
-              <ChevronRight />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setPickDates((v) => !v)}>
-              Pick dates
-            </Button>
+                <Segmented value={String(span)} onChange={(v) => setRange(start, addDays(start, Number(v) - 1))} options={[{ value: "7", label: "7 days" }, { value: "14", label: "14 days" }]} />
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => shift(-1)}>
+                    <ChevronLeft />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setRange(today, addDays(today, span - 1))} disabled={isDefaultRange}>
+                    Today
+                  </Button>
+                  <Button variant="outline" size="icon-sm" aria-label="Next period" onClick={() => shift(1)}>
+                    <ChevronRight />
+                  </Button>
+                </div>
+                <Button variant={pickDates ? "secondary" : "ghost"} size="sm" onClick={() => setPickDates((v) => !v)}>
+                  <CalendarDays /> Pick dates
+                </Button>
               </>
             )}
-          </>
-        }
-      >
+          </div>
+        </div>
         {view === "grid" && pickDates && (
           <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5 text-sm">
             <label className="flex items-center gap-2 text-slate">
@@ -314,14 +339,20 @@ export function RosterView() {
             onCellClick={canEdit || canAttend ? (driver, date, entry) => setCell({ driver, date, entry }) : undefined}
           />
         )}
-        {view === "grid" && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
-          <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Present</span>
-          <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Late</span>
-          <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-red-500" />Absent</span>
-          <span>&ldquo;→ DR-xxx&rdquo; = another driver took the shift</span>
-          <span>Red outline = truck double-booked</span>
-        </div>}
-      </SectionCard>
+        {view === "grid" && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t bg-muted/30 px-4 py-2.5 text-[11px] text-slate">
+            <span className="inline-flex items-center gap-1.5"><span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 font-medium text-amber-900 ring-1 ring-amber-200"><Sun className="size-3" />Morning</span> 7a – 7p</span>
+            <span className="inline-flex items-center gap-1.5"><span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 font-medium text-indigo-900 ring-1 ring-indigo-200"><Moon className="size-3" />Night</span> 7p – 7a</span>
+            <span className="inline-flex items-center gap-1.5"><span className="rounded-md bg-violet-50 px-1.5 py-0.5 font-medium text-violet-800 ring-1 ring-violet-200">Leave</span></span>
+            <span className="hidden h-3 w-px bg-border sm:block" />
+            <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" />Present</span>
+            <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500" />Late</span>
+            <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-red-500" />Absent</span>
+            <span>&ldquo;→ DR-xxx&rdquo; = another driver took the shift</span>
+            <span>Red outline = truck double-booked</span>
+          </div>
+        )}
+      </div>
 
       {/* Rules: one line when everything is fine */}
       {(() => {

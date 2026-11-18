@@ -3,7 +3,8 @@
 import { Suspense, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Lock, Ship } from "lucide-react";
+import { Lock } from "lucide-react";
+import { MtsLogo } from "@/components/shared/mts-logo";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/shared/loading-state";
@@ -77,9 +78,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   if (!ready)
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-background">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-navy text-white">
-          <Ship className="size-6 animate-pulse" />
-        </div>
+        <MtsLogo className="size-16 rounded-xl" pulse />
         <div className="text-sm text-slate">Loading MTS ITT Operations demo…</div>
       </div>
     );

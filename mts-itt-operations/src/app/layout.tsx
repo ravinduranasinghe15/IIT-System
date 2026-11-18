@@ -13,6 +13,7 @@ export const instant = false;
 
 export const metadata: Metadata = {
   title: "MTS ITT Operations | Techneura Labs",
+  icons: { icon: "/mts-logo.jpg", apple: "/mts-logo.jpg" },
   description:
     "Inter-Terminal Transport (ITT) Operations Management System – interactive demo for Marine Transport Services (Pvt) Ltd.",
 };

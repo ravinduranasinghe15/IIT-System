@@ -101,15 +101,25 @@ export function hasVerifiedDriverLog(db: DB, m: Movement): boolean {
   return logsFor(db, m).some((d) => d.ocr?.verified);
 }
 
-/** Extraction fields for a log sheet from the header the supervisor entered (the paper sheet's contents are not read). */
+/**
+ * Simulated extraction for a log sheet that is not one of the prepared demo sheets (a real upload or a renamed copy): there is
+ * no real OCR, so the header is taken from what the supervisor entered and the trip lines are those of the movements the sheet
+ * covers - as if the sheet lists them. (The prepared demo sheets carry their own fixed values, see demo-driver-logs.ts.)
+ */
 export function logFieldsFromMeta(db: DB, meta: DriverLogMeta): OcrField[] {
   const driver = meta.driverId ? (db.drivers.find((d) => d.id === meta.driverId)?.name ?? meta.driverId) : "";
   const lorry = meta.primeMoverId ? (db.primeMovers.find((p) => p.id === meta.primeMoverId)?.regNo ?? meta.primeMoverId) : "";
+  const trips = db.movements
+    .filter((m) => needsLog(m) && logCovers(meta, m))
+    .sort((a, b) => (a.loadingAt ?? "").localeCompare(b.loadingAt ?? ""))
+    .flatMap((m) => m.containerNos.map((cn) => `${cn} | ${m.containerSize.replace("FT", "")} | ${m.sourceTerminal} > ${m.destinationTerminal}`));
   return [
     { key: "driver", label: "Driver Name", value: driver, confidence: 92 },
     { key: "truckNo", label: "Lorry Number", value: lorry, confidence: 92 },
     { key: "shift", label: "Shift", value: meta.shift, confidence: 98 },
     { key: "date", label: "Date", value: meta.date, confidence: 96 },
+    ...trips.map((t, i) => ({ key: `trip${i + 1}`, label: `Trip ${i + 1}`, value: t, confidence: 91 })),
+    ...(trips.length ? [{ key: "tripTotal", label: "Trips written (circled)", value: String(trips.length), confidence: 90 }] : []),
   ];
 }
 

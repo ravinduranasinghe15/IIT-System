@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { UserCheck } from "lucide-react";
+import { Moon, Plane, Sun, UserCheck } from "lucide-react";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Field } from "@/components/shared/field";
 import { NativeSelect } from "@/components/shared/native-select";
@@ -18,15 +18,19 @@ import { cn } from "@/lib/utils";
 import type { AttendanceStatus, Driver, RosterEntry, RosterShift } from "@/types/driver";
 
 const SHIFT_STYLE: Record<RosterShift, string> = {
-  Morning: "bg-sky-50 text-sky-800 ring-sky-600/20",
-  Night: "bg-slate-800 text-white ring-slate-900/30",
-  Off: "bg-slate-50 text-slate-400 ring-slate-300/50",
-  Leave: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  Morning: "bg-amber-50 text-amber-900 ring-amber-200 hover:bg-amber-100/70",
+  Night: "bg-indigo-50 text-indigo-900 ring-indigo-200 hover:bg-indigo-100/70",
+  Off: "bg-transparent text-slate-400 ring-transparent hover:bg-slate-100",
+  Leave: "bg-violet-50 text-violet-800 ring-violet-200 hover:bg-violet-100/70",
 };
 const SHIFT_LABEL: Record<RosterShift, string> = { Morning: "Morning", Night: "Night", Off: "Off", Leave: "Leave" };
+const SHIFT_ICON: Partial<Record<RosterShift, typeof Sun>> = { Morning: Sun, Night: Moon, Leave: Plane };
 const ATT_DOT: Record<AttendanceStatus, string> = { Present: "bg-emerald-500", Late: "bg-amber-500", Absent: "bg-red-500", Scheduled: "bg-transparent" };
 
 export const isWorkingShift = (s: RosterShift) => isWorkShift(s);
+
+const initials = (name: string) => name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+const isWeekend = (date: string) => [0, 6].includes(new Date(`${date}T00:00:00Z`).getUTCDay());
 
 export function RosterCalendar({
   start,
@@ -62,32 +66,43 @@ export function RosterCalendar({
     [dates, roster],
   );
 
+  const colBg = (date: string) => (date === today ? "bg-brand/[0.06]" : isWeekend(date) ? "bg-slate-50/70" : "");
+
   return (
     <div className="scroll-thin overflow-x-auto">
       <table className="w-full border-separate border-spacing-0 text-xs">
         <thead>
           <tr>
-            <th className="sticky left-0 z-20 min-w-44 border-b bg-muted px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate">Driver</th>
+            <th className="sticky left-0 z-20 min-w-52 border-b bg-card px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-slate">Driver</th>
             {dates.map((date) => (
-              <th key={date} className={cn("min-w-[5rem] border-b bg-muted px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-slate", date === today && "bg-brand/10 text-brand")}>
-                <div>{formatDay(date, "EEE")}</div>
-                <div className="text-xs normal-case tracking-normal">{formatDay(date, "dd MMM")}</div>
+              <th key={date} className={cn("min-w-[5.75rem] border-b px-1 py-2.5 text-center", colBg(date) || "bg-card")}>
+                <div className={cn("text-[11px] font-semibold uppercase tracking-wide", date === today ? "text-brand" : "text-slate")}>{formatDay(date, "EEE")}</div>
+                <div className={cn("mt-0.5 inline-flex min-w-8 items-center justify-center rounded-full px-1.5 text-sm font-semibold", date === today ? "bg-brand text-white" : "text-ink")}>{formatDay(date, "dd")}</div>
+                <div className="text-[10px] font-normal text-slate">{formatDay(date, "MMM")}</div>
               </th>
             ))}
           </tr>
           {showCoverage && (
             <tr>
-              <th className="sticky left-0 z-20 border-b bg-card px-3 py-1.5 text-left text-xs font-medium text-ink">Drivers on duty</th>
+              <th className="sticky left-0 z-20 border-b bg-muted/60 px-4 py-2 text-left text-[11px] font-medium text-slate">
+                Drivers on duty
+                <span className="ml-1.5 inline-flex items-center gap-1 align-middle text-amber-600"><Sun className="size-3" /></span>
+                <span className="inline-flex items-center gap-1 align-middle text-indigo-600"><Moon className="size-3" /></span>
+              </th>
               {coverage.map((c) => {
-                const total = c.Morning.drivers + c.Night.drivers;
                 const gap = WORK_SHIFTS.some((k) => c[k].drivers === 0);
                 return (
-                  <td
-                    key={c.date}
-                    title={`Morning ${c.Morning.drivers} · Night ${c.Night.drivers}${gap ? " – a shift has no driver" : ""}`}
-                    className={cn("border-b px-1 py-1 text-center", gap && "bg-red-50", c.date === today && !gap && "bg-brand/5")}
-                  >
-                    <div className={cn("text-sm font-semibold tabular-nums", gap ? "text-danger" : "text-ink")}>{total}</div>
+                  <td key={c.date} title={`Morning ${c.Morning.drivers} · Night ${c.Night.drivers}${gap ? " – a shift has no driver" : ""}`} className={cn("border-b bg-muted/60 px-1 py-1.5 text-center", gap && "bg-red-50")}>
+                    <div className="flex items-center justify-center gap-2 text-[11px] font-semibold tabular-nums">
+                      <span className={cn("inline-flex items-center gap-0.5", c.Morning.drivers === 0 ? "text-danger" : "text-amber-700")}>
+                        <Sun className="size-3" />
+                        {c.Morning.drivers}
+                      </span>
+                      <span className={cn("inline-flex items-center gap-0.5", c.Night.drivers === 0 ? "text-danger" : "text-indigo-700")}>
+                        <Moon className="size-3" />
+                        {c.Night.drivers}
+                      </span>
+                    </div>
                   </td>
                 );
               })}
@@ -97,35 +112,47 @@ export function RosterCalendar({
         <tbody>
           {drivers.map((drv) => (
             <tr key={drv.id} className="group">
-              <td className="sticky left-0 z-10 border-b bg-card px-3 py-1.5 group-hover:bg-muted/60">
-                <div className="truncate font-medium text-ink">{drv.name}</div>
-                <div className="text-[11px] text-slate">
-                  {drv.id} · {drv.shift}
+              <td className="sticky left-0 z-10 border-b bg-card px-4 py-1.5 transition group-hover:bg-muted/60">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-navy/10 text-[11px] font-semibold text-navy">{initials(drv.name)}</span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-medium text-ink">{drv.name}</div>
+                    <div className="text-[11px] text-slate">{drv.id}</div>
+                  </div>
                 </div>
               </td>
               {dates.map((date) => {
                 const e = cell.get(`${drv.id}|${date}`);
                 const clash = conflicts.get(`${drv.id}|${date}`);
                 const clickable = !!onCellClick;
+                const working = !!e && isWorkingShift(e.shift);
+                const Icon = e ? SHIFT_ICON[e.shift] : undefined;
+                const absent = working && e.attendance === "Absent";
                 return (
-                  <td key={date} className={cn("border-b p-0.5 text-center", date === today && "bg-brand/5")}>
+                  <td key={date} className={cn("border-b p-1 text-center transition group-hover:bg-muted/40", colBg(date))}>
                     <button
                       type="button"
                       disabled={!clickable}
                       onClick={() => onCellClick?.(drv, date, e)}
-                      title={clash ? `Prime mover ${e?.primeMoverId} is also rostered for ${clash.join(", ")} on this shift` : e ? `${SHIFT_LABEL[e.shift]}${isWorkShift(e.shift) ? ` (${SHIFT_HOURS[e.shift].range})` : ""}${e.primeMoverId ? ` · ${e.primeMoverId}` : ""} · ${e.attendance}` : "Not rostered"}
+                      title={clash ? `Prime mover ${e?.primeMoverId} is also rostered for ${clash.join(", ")} on this shift` : e ? `${SHIFT_LABEL[e.shift]}${isWorkShift(e.shift) ? ` (${SHIFT_HOURS[e.shift].range})` : ""}${e.primeMoverId ? ` · ${e.primeMoverId}` : ""} · ${e.attendance}${e.absentReason ? ` · ${e.absentReason}` : ""}` : "Not rostered"}
                       className={cn(
-                        "relative flex h-12 w-full flex-col items-center justify-center rounded-md ring-1 ring-inset transition",
-                        e ? SHIFT_STYLE[e.shift] : "bg-transparent text-slate-300 ring-dashed ring-slate-200",
-                        clickable && "hover:ring-2 hover:ring-brand",
+                        "relative flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 ring-1 ring-inset transition",
+                        e ? SHIFT_STYLE[e.shift] : "bg-transparent text-slate-300 ring-transparent",
+                        clickable && "hover:-translate-y-px hover:shadow-sm hover:ring-2 hover:ring-brand/50 focus-visible:ring-2 focus-visible:ring-brand",
+                        absent && "bg-red-50 text-red-800 ring-red-200",
                         clash && "ring-2 ring-red-500",
                       )}
                     >
-                      <span className="text-[11px] font-semibold leading-none">{e ? SHIFT_LABEL[e.shift] : "—"}</span>
-                      {e && isWorkingShift(e.shift) && (
-                        <span className="mt-0.5 text-[10px] leading-none opacity-80">{e.coveredBy ? `→ ${e.coveredBy}` : e.coveringFor ? `for ${e.coveringFor}` : (e.primeMoverId ?? "no PM")}</span>
+                      <span className={cn("flex items-center gap-1 text-[11px] font-semibold leading-none", absent && "line-through decoration-red-400")}>
+                        {Icon && <Icon className="size-3" />}
+                        {e ? SHIFT_LABEL[e.shift] : "—"}
+                      </span>
+                      {working && (
+                        <span className="rounded bg-white/80 px-1 font-mono text-[10px] leading-4 text-ink/70 ring-1 ring-black/5">
+                          {e.coveredBy ? `→ ${e.coveredBy}` : e.coveringFor ? `for ${e.coveringFor}` : (e.primeMoverId ?? "no truck")}
+                        </span>
                       )}
-                      {e && isWorkingShift(e.shift) && e.attendance !== "Scheduled" && <span className={cn("absolute right-1 top-1 size-1.5 rounded-full", ATT_DOT[e.attendance])} />}
+                      {working && e.attendance !== "Scheduled" && <span className={cn("absolute right-1 top-1 size-1.5 rounded-full ring-2 ring-white", ATT_DOT[e.attendance])} />}
                     </button>
                   </td>
                 );

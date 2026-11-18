@@ -8,8 +8,8 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import type { Driver, RosterEntry } from "@/types/driver";
 
 const CHIP: Record<WorkShift, { letter: string; cls: string }> = {
-  Morning: { letter: "M", cls: "bg-sky-100 text-sky-800" },
-  Night: { letter: "N", cls: "bg-slate-800 text-white" },
+  Morning: { letter: "M", cls: "bg-amber-100 text-amber-800" },
+  Night: { letter: "N", cls: "bg-indigo-100 text-indigo-800" },
 };
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -82,7 +82,7 @@ export function RosterMonth({
               onClick={() => onSelect(date)}
               aria-label={`Roster for ${date}`}
               className={cn(
-                "flex min-h-20 flex-col items-stretch gap-1 border-b border-r p-1.5 text-left transition hover:bg-muted/60",
+                "flex min-h-24 flex-col items-stretch gap-1.5 border-b border-r p-2 text-left transition hover:bg-muted/60",
                 !inMonth && "bg-muted/30 text-slate-400",
                 date === today && "bg-brand/5",
                 date === selected && "ring-2 ring-inset ring-brand",
@@ -98,7 +98,7 @@ export function RosterMonth({
                     </span>
                   ) : null;
                 })}
-                {leave > 0 && <span title={`${leave} on leave`} className="rounded bg-amber-100 px-1 text-[10px] font-semibold leading-4 text-amber-800">L {leave}</span>}
+                {leave > 0 && <span title={`${leave} on leave`} className="rounded bg-violet-100 px-1 text-[10px] font-semibold leading-4 text-violet-800">L {leave}</span>}
               </span>
             </button>
           );
@@ -107,7 +107,7 @@ export function RosterMonth({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-slate">
         <span><span className={cn("mr-1 rounded px-1 font-semibold", CHIP.Morning.cls)}>M</span>Morning</span>
         <span><span className={cn("mr-1 rounded px-1 font-semibold", CHIP.Night.cls)}>N</span>Night</span>
-        <span><span className="mr-1 rounded bg-amber-100 px-1 font-semibold text-amber-800">L</span>On leave</span>
+        <span><span className="mr-1 rounded bg-violet-100 px-1 font-semibold text-violet-800">L</span>On leave</span>
         <span>Number = drivers on that shift (absent excluded). Click a day for the drivers.</span>
       </div>
 
