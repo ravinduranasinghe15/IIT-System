@@ -25,7 +25,7 @@ import type { AnalyticsData, ChartSpec } from "@/lib/reports";
 import { cn, formatNumber } from "@/lib/utils";
 
 const AXIS = { fontSize: 11, fill: "#64748B" };
-const GRID = "#E2E8F0";
+const GRID = "var(--chart-grid)";
 const tip = (v: unknown) => (typeof v === "number" ? formatNumber(v, Number.isInteger(v) ? 0 : 2) : String(v));
 
 function NoData({ text = "No data for the selected filters" }: { text?: string }) {

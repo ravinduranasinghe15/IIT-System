@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/providers/app-providers";
+import { THEME_INIT_SCRIPT } from "@/components/theme/theme-provider";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 
@@ -20,7 +21,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* applies the saved theme before the first paint so there is no flash of the wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         <AppProviders>{children}</AppProviders>
       </body>

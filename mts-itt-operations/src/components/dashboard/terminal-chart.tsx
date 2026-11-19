@@ -11,10 +11,10 @@ export function TerminalChart({ data }: { data: TerminalStat[] }) {
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="terminal" tick={{ fontSize: 12 }} stroke="#94A3B8" />
             <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94A3B8" />
-            <Tooltip cursor={{ fill: "#F1F5F9" }} />
+            <Tooltip cursor={{ fill: "rgb(148 163 184 / 0.15)" }} />
             <Bar dataKey="movements" name="Journeys" radius={[4, 4, 0, 0]} maxBarSize={56}>
               {data.map((d) => (
                 <Cell key={d.terminal} fill={TERMINAL_COLORS[d.terminal]} />

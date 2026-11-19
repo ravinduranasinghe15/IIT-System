@@ -13,6 +13,8 @@ npm run dev      # http://localhost:3000
 npm run lint && npx tsc --noEmit && npm run build
 ```
 
+Use the header **theme button** (sun/moon) to switch between **Light**, **Dark** and **System**; the choice is remembered in the browser.
+
 Use the header **role switcher** to view the app as CEO, Manager, Supervisor
 or Driver (frontend permissions only). *Reset demo data* is in the user menu / Settings.
 

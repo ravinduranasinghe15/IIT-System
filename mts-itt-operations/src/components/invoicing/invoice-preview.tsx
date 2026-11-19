@@ -34,7 +34,7 @@ export function InvoicePreview({ invoice }: { invoice: Invoice }) {
   return (
     <div className="scroll-thin overflow-x-auto rounded-xl bg-slate-200/70 p-3 sm:p-6">
       <style>{PRINT_CSS}</style>
-      <div className="invoice-sheet relative mx-auto min-h-[1000px] w-[794px] max-w-none overflow-hidden bg-white p-10 text-slate-800 shadow-lg ring-1 ring-slate-300">
+      <div className="invoice-sheet force-light relative mx-auto min-h-[1000px] w-[794px] max-w-none overflow-hidden bg-white p-10 text-slate-800 shadow-lg ring-1 ring-slate-300">
         {/* watermark */}
         <div className="pointer-events-none absolute inset-0 flex select-none items-center justify-center" aria-hidden>
           <div className="-rotate-30 whitespace-nowrap text-6xl font-bold tracking-wide text-slate-900/[0.06]">DEMO – not a tax invoice</div>

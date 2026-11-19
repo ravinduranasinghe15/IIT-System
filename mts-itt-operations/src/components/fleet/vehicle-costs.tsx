@@ -150,7 +150,7 @@ export function VehicleCosts({ vehicleId }: { vehicleId: string }) {
         <div className="h-56 w-full px-2 pt-3">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={c.monthly.map((m) => ({ name: formatDay(`${m.month}-01`, "MMM yy"), Fuel: m.fuel, Maintenance: m.maintenance }))} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-              <CartesianGrid stroke="#E2E8F0" vertical={false} />
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
               <XAxis dataKey="name" tick={AXIS} />
               <YAxis tick={AXIS} tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
               <Tooltip formatter={(v) => (typeof v === "number" ? money(v) : String(v))} />

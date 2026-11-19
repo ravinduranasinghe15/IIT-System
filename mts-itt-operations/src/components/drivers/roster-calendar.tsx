@@ -148,11 +148,11 @@ export function RosterCalendar({
                         {e ? SHIFT_LABEL[e.shift] : "—"}
                       </span>
                       {working && (
-                        <span className="rounded bg-white/80 px-1 font-mono text-[10px] leading-4 text-ink/70 ring-1 ring-black/5">
+                        <span className="rounded bg-card/80 px-1 font-mono text-[10px] leading-4 text-ink/70 ring-1 ring-black/5">
                           {e.coveredBy ? `→ ${e.coveredBy}` : e.coveringFor ? `for ${e.coveringFor}` : (e.primeMoverId ?? "no truck")}
                         </span>
                       )}
-                      {working && e.attendance !== "Scheduled" && <span className={cn("absolute right-1 top-1 size-1.5 rounded-full ring-2 ring-white", ATT_DOT[e.attendance])} />}
+                      {working && e.attendance !== "Scheduled" && <span className={cn("absolute right-1 top-1 size-1.5 rounded-full ring-2 ring-card", ATT_DOT[e.attendance])} />}
                     </button>
                   </td>
                 );

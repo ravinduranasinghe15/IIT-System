@@ -24,7 +24,7 @@ import { cn, formatMoney, formatNumber } from "@/lib/utils";
 import type { TerminalCode } from "@/types/terminal";
 
 const AXIS = { fontSize: 11, fill: "#64748B" };
-const GRID = "#E2E8F0";
+const GRID = "var(--chart-grid)";
 const PIE = [CHART_COLORS.navy, CHART_COLORS.blue, CHART_COLORS.green, CHART_COLORS.orange, CHART_COLORS.grey, CHART_COLORS.red];
 const PERIODS: { key: IttPeriod; label: string }[] = [
   { key: "daily", label: "Daily" },

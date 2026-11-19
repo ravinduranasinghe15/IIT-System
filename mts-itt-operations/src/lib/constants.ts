@@ -46,16 +46,16 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const TERMINAL_COLORS: Record<string, string> = {
-  CWIT: "#315D8A",
+  CWIT: "var(--chart-blue)",
   SAGT: "#16A36A",
   CICT: "#F59E0B",
-  JCT: "#142C4C",
+  JCT: "var(--chart-navy)",
   ECT: "#64748B",
 };
 
 export const CHART_COLORS = {
-  navy: "#142C4C",
-  blue: "#315D8A",
+  navy: "var(--chart-navy)",
+  blue: "var(--chart-blue)",
   green: "#16A36A",
   orange: "#F59E0B",
   red: "#DC2626",

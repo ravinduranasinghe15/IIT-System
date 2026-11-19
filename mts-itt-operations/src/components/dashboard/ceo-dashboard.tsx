@@ -22,7 +22,7 @@ import { RecentExceptions } from "./recent-exceptions";
 import { ImportActivity } from "./import-activity";
 
 const AXIS = { fontSize: 11, fill: "#64748B" };
-const GRID = "#E2E8F0";
+const GRID = "var(--chart-grid)";
 const PIE = [CHART_COLORS.navy, CHART_COLORS.blue, CHART_COLORS.green, CHART_COLORS.orange, CHART_COLORS.grey];
 const tip = (v: unknown) => (typeof v === "number" ? formatNumber(v, Number.isInteger(v) ? 0 : 2) : String(v));
 const PERIODS: { key: IttPeriod; label: string }[] = [

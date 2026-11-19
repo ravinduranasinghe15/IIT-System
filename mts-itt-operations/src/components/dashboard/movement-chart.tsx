@@ -12,7 +12,7 @@ export function MovementChart({ data, title = "Daily movement trend" }: { data: 
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis dataKey="day" tickFormatter={(d: string) => formatDay(d, "dd MMM")} tick={{ fontSize: 11 }} stroke="#94A3B8" />
             <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94A3B8" />
             <Tooltip labelFormatter={(d) => formatDay(String(d), "EEE dd MMM yyyy")} />

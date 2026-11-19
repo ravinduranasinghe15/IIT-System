@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/shared/native-select";
 import { Breadcrumb, titleForPath } from "./breadcrumb";
 import { UserMenu } from "./user-menu";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useApp } from "@/contexts/app-context";
 import { useAuth } from "@/contexts/auth-context";
 import { ROLES, type Role } from "@/types/user";
@@ -202,6 +203,7 @@ export function AppHeader({ onMenu }: { onMenu: () => void }) {
             aria-label="Switch demo role"
           />
         </div>
+        <ThemeToggle />
         <Notifications />
         <UserMenu />
       </div>
